@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+cache/
+models/base/
+models/clip/
+runs/
+logs/

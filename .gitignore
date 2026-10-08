@@ -1,0 +1,60 @@
+# Local repositories, IDE state, and credentials
+.git/
+.codebuddy/
+.codewiki/
+.vscode/
+.idea/
+.xac/
+.env
+.env.*
+*.pem
+*.key
+
+# Environments and caches
+.venv/
+venv/
+env/
+node_modules/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+cache/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Datasets and generated sample manifests
+/datasets/
+dataset_manifest.json
+
+# Downloaded model files
+/BrushNet_benchmark/models/base/
+/BrushNet_benchmark/models/brushnet/
+/BrushNet_benchmark/models/clip/
+/PowerPaint_benchmark/models/base/
+/PowerPaint_benchmark/models/powerpaint/
+/PowerPaint_benchmark/models/clip/
+/PowerPaint_benchmark/models/tokenizer/
+/SD15_inpainting_benchmark/models/base/
+/SD15_inpainting_benchmark/models/clip/
+/SD20_inpainting_benchmark/models/base/
+/SD20_inpainting_benchmark/models/clip/
+checkpoints/
+pretrained_weights/
+*.safetensors
+*.ckpt
+*.pth
+*.pt
+*.onnx
+
+# Local run artifacts
+runs/
+logs/
+*.log
+*.clone.exit
+/SD15_inpainting_benchmark/environment.json
+/SD15_inpainting_benchmark/validation_results.json
+/SD20_inpainting_benchmark/environment.json
+/SD20_inpainting_benchmark/validation_results.json

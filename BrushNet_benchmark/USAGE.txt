@@ -1,0 +1,72 @@
+BrushNet 遥感编辑基准
+====================
+项目位置：/data/workspace/BrushNet_benchmark
+
+1. 环境与模型
+当前 .venv 已配置并完成真实小样本运行。为避免重新下载系统已有 CUDA PyTorch，当前环境以 --system-site-packages 创建；新增/替换包只在 .venv，不修改系统及 Text2Earth 项目。requirements.txt 固定主要依赖；requirements.lock.txt 保存实测完整版本。新机器可运行 bash setup_environment.sh 创建不继承系统包的独立环境。
+
+官方 BrushNet 代码：vendor/BrushNet，commit 0f9d9e54ca85c40a11a8f0504b4b5b2e7e8fd14d，未修改源码。
+基座：stable-diffusion-v1-5/stable-diffusion-v1-5，普通 SD1.5 文生图底模，不是 SD1.5 Inpainting。
+插件：Sanster/brushnet_random_mask 的 fp16 权重，是社区分发版本，不冒称腾讯官方托管；官方仓库最初链接为 Google Drive。确切 revision 与来源见 models/sources.json，下载文件校验值见 models/checksums.json。
+评测：openai/clip-vit-large-patch14，fp32，safetensors。
+下载入口：.venv/bin/python download_models.py
+代码与权重许可分别遵守其原始条款。
+
+2. 数据
+数据已安全解压到 /data/workspace/datasets/test_dataset_1500。
+检查入口：.venv/bin/python prepare_dataset.py
+真实数据是1550条；原图全为224x224，mask全为256x256、二值；无空mask/全白mask。按相同视场缩放，非像素尺寸本来一致。
+以 prompts.json 与实际文件为准；dataset_info.json 的7个旧文件名未擅自更改，不使用旧类别字段进行类别统计。
+dataset_manifest.json 含每条prompt、图像/mask内容SHA256、尺寸、mask占比及清单差异。
+reference_images 是输入原图，不是编辑完成后的目标真值。
+
+3. 正式推理设置
+512x512工作分辨率，结果以BILINEAR缩到256x256无损PNG，与原项目指标输入尺度对齐。
+50步、UniPCMultistepScheduler、CFG7.5、BrushNet scale1.0、空negative prompt。
+原图BILINEAR放大，mask NEAREST放大，白色>127为编辑区域；按官方流程在输入阶段遮黑编辑区。只做最终尺寸调整，不额外原图粘贴/羽化，不调用其他编辑模型。
+每个ID都将Python/NumPy/torch CPU/CUDA及显式CUDA generator重置为42。官方条件VAE采样不使用传入generator，因而全局重置不可省略。独立进程重复同一图片，已验证PNG SHA256完全相同。
+当前为原生工作分辨率基线，不可宣称与256原生Text2Earth等计算预算。正式比较应记录尺寸/采样器/CFG差异。
+
+小样本/续跑：
+.venv/bin/python infer.py --limit 3
+.venv/bin/python infer.py
+
+输出：runs/brushnet_sd15_random_s42/generated/<id>.png
+逐图状态、耗时、显存、输出哈希：同run的 samples/<id>.json
+配置不同会拒绝混跑；配置不变会检查输出哈希并跳过已完成图像。修改 infer.py/common.py 也会改变配置指纹，需新建 --run-dir。
+默认本地研究不载入NSFW分类器，不对公网提供服务。
+
+4. 评测
+.venv/bin/python evaluate.py
+只有1550张全部成功且输出哈希匹配时才做默认全量评测；不会静默跳过缺图。
+参考原项目 origin/feat/tri-unified 的 metric/reeval_inpainting_metrics.py 和 metric/eval_fwd_metric.py。
+主指标：
+- Global CLIP：L/14图文单位向量余弦x100，不截断负分。
+- Local CLIP：mask外置黑后整图输入CLIP，不是bbox裁剪。
+- FWD：pytorchfwd==1.0.1，haar/max_level4/log_scale=False/resize256，与原脚本参数对齐；包会改全局dtype，脚本在使用后恢复。
+- 全图LPIPS：AlexNet v0.1，与最新原项目定义对齐。
+附加指标：spatial=True的mask内/外LPIPS、背景MAE/PSNR/SSIM、双侧3像素边界带原图差异与LPIPS。
+区域LPIPS修复了原项目早期把scalar误当空间图的问题。区域特征感受野仍可能跨边界；原图差异不等于编辑质量、边界平滑不等于真实。
+FID可选：.venv/bin/python evaluate.py --fid；默认不启用，以遵循最新aligned协议。可选FID入口本轮未做数值验证，主评测链CLIP/LPIPS/FWD已实际验证。
+小样本仅用于链路检查：.venv/bin/python evaluate.py --allow-partial --skip-fwd --output-name smoke_eval_results.json
+不将3张的FWD/CLIP视作正式结果或与历史1550样本比较。
+LPIPS权重均以weights_only=True安全加载，预训练AlexNet和线性校准权重均实际装载，非随机网络。
+
+eval_results.json：汇总与精确定义；eval_results_per_sample.json：每样本指标；eval_results.txt：可读结果。
+分布指标尚未完成时状态为running_distribution_metrics，不误标complete。
+
+5. 长时间运行
+.venv/bin/python -u run_benchmark.py
+此入口先续跑全部推理，仅推理成功后自动评测全部1550张。
+后台示例：nohup .venv/bin/python -u run_benchmark.py > logs/full_job.log 2>&1 < /dev/null &
+不自动重启失败任务，不会启动服务或训练模型。
+查看：runs/brushnet_sd15_random_s42/job_status.json、progress.json
+日志：runs/brushnet_sd15_random_s42/logs/inference.log、evaluation.log
+完成标志：job_status.json 的status=complete且evaluated=1550，并存在完整eval_results.json。
+如果环境关机/重启导致中断，重新运行同一命令即可续跑；不要仅凭旧status文件判断进程仍活着。
+
+6. 已完成验证
+.venv/bin/python -m unittest -v test_benchmark
+5项测试通过：ZIP路径安全、样本配对与缩放mask、数值/JSON、像素指标恒等性、真实LPIPS恒等性与空间输出。
+已实跑3张正式配置：约11–13秒/张，torch peak allocated显存约4050MiB。峰值为PyTorch已分配显存，不等于整卡总占用。
+全量1550张按小样本耗时估算约5小时，仅为估计，取决于GPU负载；其后CLIP/LPIPS/FWD还需评测时间。

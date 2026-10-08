@@ -1,0 +1,41 @@
+{
+  "base": {
+    "repo_id": "stable-diffusion-v1-5/stable-diffusion-v1-5",
+    "revision": "451f4fe16113bff5a5d2269ed5ad43b0592e9a14",
+    "allow_patterns": [
+      "model_index.json",
+      "scheduler/*.json",
+      "tokenizer/*",
+      "text_encoder/config.json",
+      "text_encoder/model.fp16.safetensors",
+      "unet/config.json",
+      "unet/diffusion_pytorch_model.fp16.safetensors",
+      "vae/config.json",
+      "vae/diffusion_pytorch_model.fp16.safetensors",
+      "feature_extractor/*.json"
+    ],
+    "provenance": "Community mirror of the original SD1.5 base, fp16 variant; not SD1.5 Inpainting.",
+    "local_dir": "/data/workspace/BrushNet_benchmark/models/base"
+  },
+  "brushnet": {
+    "repo_id": "Sanster/brushnet_random_mask",
+    "revision": "2201b8b01f0aa4456789fb6b525a8d15d2bde6e1",
+    "allow_patterns": [
+      "config.json",
+      "diffusion_pytorch_model.fp16.safetensors"
+    ],
+    "provenance": "Community fp16 distribution of random-mask BrushNet; not hosted by TencentARC. Official source: TencentARC/BrushNet README Google Drive checkpoint collection.",
+    "local_dir": "/data/workspace/BrushNet_benchmark/models/brushnet"
+  },
+  "clip": {
+    "repo_id": "openai/clip-vit-large-patch14",
+    "revision": "32bd64288804d66eefd0ccbe215aa642df71cc41",
+    "allow_patterns": [
+      "*.json",
+      "merges.txt",
+      "model.safetensors"
+    ],
+    "provenance": "OpenAI CLIP ViT-L/14 for evaluation, not generation.",
+    "local_dir": "/data/workspace/BrushNet_benchmark/models/clip"
+  }
+}

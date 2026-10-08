@@ -1,0 +1,26 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.1.2+cu121
+torchvision==0.16.2+cu121
+diffusers==0.27.0
+transformers==4.37.2
+huggingface-hub==0.20.3
+accelerate==0.26.1
+safetensors==0.4.2
+numpy==1.26.3
+Pillow==10.2.0
+scipy==1.11.1
+scikit-image==0.22.0
+lpips==0.1.4
+pytorchfwd==1.0.1
+ptwt==0.1.8
+PyWavelets==1.6.0
+pytorch-fid==0.3.0
+filelock==3.19.1
+typing-extensions==4.13.2
+dill==0.3.7
+multiprocess==0.70.15
+ftfy==6.2.0
+tqdm==4.66.1
+requests==2.31.0
+wheel==0.45.1
+setuptools==69.5.1

@@ -1,0 +1,1995 @@
+=====PAGE 1=====
+1
+Text2Earth: Unlocking Text-driven Remote Sensing
+Image Generation with a Global-Scale Dataset and
+a Foundation Model
+Chenyang Liu, Keyan Chen, Rui Zhao, Zhengxia Zou, Senior Member, IEEE,
+and Zhenwei Shi∗, Senior Member, IEEE
+Abstract—Recently, generative foundation models have sig-
+nificantly advanced large-scale text-driven natural image gen-
+eration and have become a prominent research trend across
+various vertical domains. However, in the remote sensing field,
+there is still a lack of research on large-scale text-to-image
+(text2image) generation technology. Existing remote sensing
+image-text datasets are small in scale and confined to specific
+geographic areas and scene types. Besides, existing text2image
+methods have struggled to achieve global-scale, multi-resolution
+controllable, and unbounded image generation. To address these
+challenges, this paper presents two key contributions: the Git-
+10M dataset and the Text2Earth foundation model. Git-10M is
+a global-scale image-text dataset comprising 10.5 million image-
+text pairs, 5 times larger than the previous largest one. The
+dataset contains essential resolution information and covers a
+wide range of geographic scenes and contains essential geospatial
+metadata, significantly surpassing existing datasets in both size
+and diversity. Building on Git-10M, we propose Text2Earth,
+a 1.3 billion parameter generative foundation model based on
+the di ffusion framework to model global-scale remote sensing
+scenes. Text2Earth integrates a resolution guidance mechanism,
+enabling users to specify image resolutions. A dynamic condition
+adaptation strategy is proposed for training and inference to
+improve image generation quality. Text2Earth not only excels
+in zero-shot text2image generation but also demonstrates robust
+generalization and flexibility across multiple tasks, including
+unbounded scene construction, image editing, and cross-modal
+image generation. This robust capability surpasses previous
+models restricted to the basic fixed size and limited scene types.
+On the previous text2image benchmark dataset, Text2Earth
+outperfoms previous models with a significant improvement of
++26.23 FID and +20.95% Zero-shot Cls-OA metric. Our project
+page is https://chen-yang-liu.github.io/Text2Earth/
+Index Terms —Remote Sensing, Global-scale, Text-to-Image
+Generation, Foundation models, and Multimodality.
+The work was supported by the National Natural Science Foundation
+of China under Grant 62125102, 624B2017, 62471014, U24B20177, and
+623B2013, the National Key Research and Development Program of China
+under Grant 2022ZD0160401, the Beijing Natural Science Foundation under
+Grant JL23005, and the Fundamental Research Funds for the Central Universi-
+ties. (Corresponding author: Zhenwei Shi (e-mail: shizhenwei@buaa.edu.cn))
+Chenyang Liu, Keyan Chen, Zhengxia Zou and Zhenwei Shi are with
+the Department of Aerospace Intelligent Science and Technology, School of
+Astronautics, with the State Key Laboratory of Virtual Reality Technology and
+Systems, Beihang University, Beijing 100191, China, with the Key Laboratory
+of Spacecraft Design Optimization and Dynamic Simulation Technologies,
+Ministry of Education, and also with Shanghai Artificial Intelligence Labora-
+tory, Shanghai 200232, China.
+Chenyang Liu is also with Shen Yuan Honors College of Beihang Univer-
+sity, Beijing 100191, China.
+Rui Zhao is with the Department of Electrical and Computer Engineering,
+National University of Singapore, Singapore 117583.
+I. I ntroduction
+Recently, generative foundation models have significantly
+advanced large-scale text-driven natural image generation and
+have become a prominent research trend across various verti-
+cal domains [1]–[3], including medical imaging, autonomous
+driving, and virtual reality. These foundation models have
+demonstrated impressive image generation capabilities from
+large-scale image-text datasets, enabling them to produce
+large amounts of high-quality images. However, in the remote
+sensing field, there is still a lack of research on the large-scale
+text-to-image (text2image) generation technology based on
+foundation models [4]–[7]. This research holds considerable
+significance and application value, particularly in areas such as
+imaging simulation, virtual remote sensing scene construction,
+and data augmentation [8]–[10].
+Unlike natural images, remote sensing images possess a
+unique “God’s-eye” perspective, characterized by wide ge-
+ographical coverage, diverse scenes, and multiple resolu-
+tions [11]–[15]. These attributes underscore the necessity of
+the global-scale, multi-resolution controllable, and unbounded
+remote sensing text2image generation techniques.
+Despite advancements in previous studies, significant chal-
+lenges remain: 1) Dataset Limitations: As illustrated in Fig. 1
+and Table I, existing remote sensing image-text datasets are
+small-scale and lack sufficient diversity, such as UCM [16] and
+RSICD [17]. These datasets are typically confined to specific
+geographic areas and scene types. Moreover, these datasets
+usually consist of simple image-text pairs without crucial res-
+olution information [8], restricting the flexibility of text2image
+generation in real-world scenarios that require images with
+specified resolutions. 2) Model Limitations: Previous models
+have employed techniques like Generative Adversarial Net-
+works (GANs) and Transformer to improve generation quality.
+However, these models struggle to adequately capture the
+complex structured geographical features inherent in global-
+scale remote sensing scenes. Meanwhile, they overlook the
+resolution-specific characteristics inherent in remote sensing
+imagery. This often results in the generation of images with
+uncertain resolutions, rather than tailored to user-specified
+needs. Moreover, these models are restricted to basic fixed-size
+text2image generation, lacking the capability as foundation
+models to generalize across multiple text-driven generation
+tasks (e.g., unbounded scene construction and image editing),
+making them less versatile for real-world applications.
+arXiv:2501.00895v2  [cs.CV]  20 Mar 2025
+=====PAGE 2=====
+2
+RS5M-RS3
+UCM RSICD NWPU-cap
+Fig. 1. Comparison between previous remote sensing text2image datasets and
+our Git-10M dataset.
+In this paper, we aim to advance remote sensing text2image
+generation towards global-scale scene generation, multi-
+resolution controllability, and unbounded large-size image syn-
+thesis through two primary contributions: a large-scale dataset
+and a powerful generative foundation model. To overcome
+the limitations of existing datasets, we developed the Git-
+10M dataset, a Global-scale image-text dataset comprising
+10.5 million image-text pairs, which is 5 times larger than
+the previous largest dataset. Surpassing previous datasets, Git-
+10M encompasses a diverse range of global geographical
+scenes, including cities, forests, and mountains, while also
+containing rich metadata such as image resolution and geo-
+graphic location. This comprehensive diversity empowers the
+model trained on Git-10M to generate realistic and global-
+scale images across various geographic scenes.
+Building upon the Git-10M dataset, we propose Text2Earth,
+a 1.3 billion parameter generative foundation model based
+on the di ffusion framework [18], [19] to model global-scale
+remote sensing scenes. To e fficiently generate large-scale re-
+mote sensing images, Text2Earth employs a V AE to compress
+images into a compact feature space. By performing the
+diffusion process in this feature space instead of conventional
+pixel space, Text2Earth significantly reduces computational
+overhead while preserving the image fidelity, making it well-
+suited for unbounded large-scale scene generation. To facilitate
+textual understanding, Text2Earth employ the OpenCLIP ViT-
+H encoder [20] for robust and nuanced text representation,
+which is integrated into the denoising UNet network [21] via
+the cross-attention mechanism. We propose a resolution guid-
+ance mechanism for Text2Earth, addressing previous models’
+limitations in resolution control. Resolution-specific informa-
+tion is encoded and incorporated into each denoising step of
+the diffusion process, guiding noise prediction for resolution-
+controlled image generation. Furthermore, a dynamic condi-
+tion adaptation strategy is proposed to integrate conditional
+inputs with null conditions to guide the denoising direction
+during training and inference. This strategy enhances genera-
+tion quality while enabling the model to maintain performance
+in the absence of specific textual or resolution inputs.
+The structure of the Text2Earth model equipped with 1.3 bil-
+lion parameters. It consists of some core components: a Vari-
+ational Autoencoder (V AE) for e fficient image compression
+TABLE I
+Comparison between previous remote sensing text 2image datasets and our
+Git-10M dataset.
+Method Global-Scale Resolution Number of Images
+UCM [16] ✗ ✗ 2.1k
+RSICD [17] ✗ ✗ 10.9k
+NWPU-cap [22] ✗ ✗ 31.5k
+RS5M-RS3 [23] – ✗ 2M
+Git-10M ✔ ✔ 10M
+and reconstruction, an OpenCLIP ViT-H text encoder [20] for
+converting text into high-dimensional semantic embeddings,
+a resolution embedding module, and a U-Net with the cross-
+attention mechanism for precise noise prediction.
+Different from previous methods limited to generating
+fixed-size images with constrained scene diversity, Text2Earth
+not only supports resolution-controllable zero-shot text2image
+generation but also demonstrates robust generalization and
+flexibility across multiple tasks, including: 1) Zero-shot
+Text2Image Generation: Text2Earth can generate specific im-
+age content based on user-free text input without requir-
+ing scene-specific fine-tuning. Additionally, on the previous
+remote sensing text2image benchmark dataset, Text2Earth
+surpasses prior models with a significant improvement of
++26.23 FID and +20.95% Zero-Shot Cls-OA metric. 2) Un-
+bounded Remote Sensing Scene Construction: Text2Earth
+enables the unbounded generation of remote sensing scenes
+with a consistent spatial resolution through iterative user’s
+text input, overcoming the fixed-size constraints of previous
+models. This functionality is ideal for creating expansive
+geographic visualizations. 3) Remote Sensing Image Editing:
+Text2Earth supports advanced editing tasks such as inpainting,
+cloud removal, and localized content modification, making
+it a versatile tool for interactive image editing. 4) Cross-
+modal Image Generation: Text2Earth has learned extensive
+knowledge and universal image generation capabilities from
+large-scale remote sensing data. These capabilities allow it
+for efficient transfer to diverse cross-modal image generation
+tasks, such as text-driven multi-modal image generation (e.g.,
+NIR or SAR images), and image-to-image translation.
+Our contributions can be summarized as follows:
+• Global-Scale Dataset : We present Git-10M, the largest-
+scale remote sensing image-text dataset, featuring exten-
+sive geographical diversity and metadata. It overcomes the
+limitations of previous small-scale datasets and provides
+a robust foundation for training generative models.
+• Generative Foundation Model: We develop Text2Earth,
+a powerful di ffusion-based generative foundation model
+that generates diverse global geographic scenes and multi-
+resolution images, ranging from close-up details to wide-
+area coverage, guided by user-provided textual input.
+• Generalization and Flexibility: Text2Earth excels across
+various tasks, including zero-shot text2image genera-
+tion, unbounded scene construction, image editing, and
+cross-modal image generation. This versatility represents
+=====PAGE 3=====
+3
+a significant advancement, surpassing previous models
+restricted to fixed sizes and specific scenes. Besides,
+On the previous text2image benchmark RSICD dataset,
+Text2Earth surpasses the previous models with a signifi-
+cant improvement of +26.23 FID and +20.95% Zero-shot
+Cls-OA metric.
+II. R elated Work
+In this section, we will review the recent advancements in
+generative foundation models and remote sensing text2image
+generation, highlighting the limitations of existing research.
+A. Generative Foundation Models in the Computer Vision
+Generative foundation models (GFMs) have become in-
+creasingly influential in the field of computer vision, demon-
+strating remarkable advancements in the generation and trans-
+formation of visual data [3], [24]–[27]. These models, which
+are based on large-scale pre-training, are designed to capture
+a broad range of visual concepts and structures from vast
+datasets, making them versatile for numerous downstream
+tasks. Current generative models mainly focus on text2image
+generation. These models are typically built on three architec-
+tures: Generative Adversarial Networks (GANs), Autoregres-
+sive Transformers, and Di ffusion models.
+1) GANs-Based Models: GANs, introduced by Goodfel-
+low et al. in 2014 [28], are a classic generative model for
+text2image generation. In a typical GAN-based text2image
+framework, a generator learns to synthesize images from
+textual input, while a discriminator evaluates the realism of
+these images [29]–[34]. The adversarial interplay between
+these components fosters iterative refinement of generated
+images.
+Reed et al. first used a conditional GAN (cGAN) struc-
+ture [35] to explore GAN-based text2image generation. Stack-
+GAN [36] generates high-resolution images in two stages:
+first by producing a low-resolution image from text, and then
+refining it to a high-resolution version. AttnGAN [37] intro-
+duced an attention mechanism that allowed the model to align
+specific words in the text with corresponding image regions.
+MirrorGAN [38] further emphasized bidirectional mapping
+between text and images to preserve textual coherence. In
+recent research, GigaGAN [39] expands the model parameters
+and trains on large-scale data. It incorporates a multi-resolution
+hierarchical architecture and can generate ultra-high-resolution
+images at a faster speed. UFOGen [40] combines GANs
+and di ffusion models. It adopts a UNet architecture of the
+Stable Diffusion [19], enabling it to leverage pre-trained Stable
+Diffusion for initialization, thereby significantly simplifying
+the training process. Despite these successes, GAN-based
+models are often hindered by challenges such as mode collapse
+and training instability, which can limit their e ffectiveness in
+generating diverse and high-quality images [41], [42].
+2) Autoregressive Models: Autoregressive models treat im-
+age generation as a sequential process. They typically leverage
+the large-scale Transformer architecture to generate images
+by sequentially predicting pixels or regions conditioned on
+preceding outputs and textual inputs [43]–[48]. This approach
+has demonstrated strong capabilities in text2image generation
+by modeling the joint distribution of text and image tokens in
+a shared latent space.
+OpenAI’s DALL-E [43] laid the foundation for autoregres-
+sive text2image models with a two-stage training pipeline. It
+first trains a dV AE model to discretize the image, and then
+performs autoregressive modeling on the text and image to-
+kens. Building on this, CogView [44] addresses the instability
+problem in large-scale autoregressive text2image training by
+proposing Precision Bottleneck Relaxation and Sandwich Lay-
+ernorm. Different from decoder-only architecture, Parti [45] in-
+troduced an encoder-decoder architecture, treating text2image
+generation as a translation task, where the encoder processes
+text while the decoder predicts image tokens. Recent models
+emphasize e fficiency and scalability. V AR [49] proposes a
+coarse-to-fine “next-scale prediction” mechanism, diverging
+from traditional “next-token prediction”. It achieved superior
+performance in terms of image quality, inference speed, and
+scalability compared to di ffusion models. ZipAR [50] acceler-
+ates autoregressive generation through a training-free parallel
+decoding framework, exploiting the spatial locality inherent in
+image data to enhance generation e fficiency.
+3) Di ffusion-Based Models: Diffusion models have gained
+prominence as a leading approach in generative modeling [18],
+[51]. They operate by simulating a forward process that
+progressively corrupts data with noise and a reverse process
+that incrementally removes the noise, e ffectively reconstruct-
+ing the original data [52]. This framework o ffers advantages
+such as training stability and the capacity to produce diverse,
+photorealistic images [24].
+GLIDE [53] is a pioneering work comparing CLIP guid-
+ance and classifier-free guidance in text-conditional di ffusion.
+DALL-E 2 [54] employs a two-stage approach that generates
+CLIP embeddings from textual descriptions and decodes these
+embeddings into detailed images. Stable Di ffusion [19] in-
+troduces latent space di ffusion for generating high-resolution
+images with reduced computational cost. Based on priors
+obtained from a large amount of data, it has become one
+of the most widely used generative foundation models and
+has enabled applications in domains such as artistic paint-
+ing [55], [56], text-guided image editing [57], [58], and text-
+to-video [59]–[61]. Recent innovations emphasize enhanced
+control and interactivity. ControlNet [62] enables spatial and
+structural control during image generation by integrating addi-
+tional conditioning inputs. DragDi ffusion [63] o ffers a point-
+based interface for precise spatial control, leveraging the power
+of pretrained di ffusion models and latent space optimization
+at a single and carefully selected time step.
+B. Remote Sensing Text2Image Generation
+Remote sensing text2image generation task was first ex-
+plored by Bejiga et al. [64], who proposed a conditional
+GAN-based method to generate retro-images from ancient
+text descriptions of geographical landscapes. In subsequent
+works [65], [66], they enhanced text encoding by using a
+doc2vec encoder [67] to extract different levels of text informa-
+tion, such as object types, attributes, and spatial relationships.
+=====PAGE 4=====
+4
+However, the generated images su ffered from low resolution
+and insufficient detail, limiting their applicability. To address
+these issues, Zhao et al. [68] proposed StrucGAN, which gen-
+erates high-resolution images through a multi-stage process.
+StrucGAN incorporates an unsupervised segmentation module
+within the discriminator to extract structural information from
+images, ensuring the synthesis of structurally coherent outputs.
+BTD-sGAN [69] introduced an innovative approach by replac-
+ing traditional Gaussian noise with Perlin noise and using
+segmentation masks and textual descriptions as conditional
+inputs to improve the quality of generated images.
+Moving beyond GAN-based approaches, Xu et al. [8] devel-
+oped Txt2Img-MHN, which employs a modern Hopfield net-
+work [70] to generate visual embeddings in an autoregressive
+manner. Their method leverages Vector Quantized Variational
+AutoEncoder (VQV AE) [71] and Vector Quantized Genera-
+tive Adversarial Network (VQGAN) [30] to discretize image
+embeddings. Additionally, Txt2Img-MHN implements coarse-
+to-fine hierarchical prototype learning for text and image
+embeddings via Hopfield Lookup, extracting representative
+prototypes from text-image embeddings.
+Recent advancements have explored diffusion-based models
+for remote sensing text2image generation. Building on the
+Stable Di ffusion model, Di ffusionSat [72] introduced a 3D
+ControlNet to extend the model’s capability for more con-
+ditional generation tasks. Similarly, CRS-Di ff [73] also focus
+on controllable image generation. RSDi ff [74] adopts a two-
+stage text2image diffusion framework inspired by Imagen [75],
+where an initial low-resolution di ffusion model generates
+preliminary images from textual inputs, followed by a super-
+resolution model that refines the images to achieve higher
+levels of detail.
+Despite the progress achieved by these models, significant
+challenges remain. Current approaches struggle to fully cap-
+ture the complex and structured geographic features character-
+istic of global-scale remote sensing scenes, primarily due to
+the limited availability of diverse training datasets. This con-
+straint limits their ability to generalize as foundation models
+for various text-driven generative tasks, such as unbounded
+scene construction and image editing.
+III. G lobal-scale image-text Dataset
+The Git-10M dataset is a global-scale remote sensing image-
+text pair dataset, consisting of 10.5 million image-text pairs
+with geographical locations and resolution information. This
+section will detail the construction process of the dataset and
+conduct a systematic analysis.
+A. Image Collection and Preprocessing
+As shown in Fig. 2, the images in the Git-10M dataset are
+sourced from multiple publicly available datasets and man-
+ually collected global remote sensing imagery from Google
+Earth. The public datasets, including Million-AID [76],
+GeoPile [77], SSL4EO-S12 [78], SkyScript [79], DIOR [80],
+and RSICB [81], provide high-quality remote sensing images.
+These datasets primarily focus on scene classification tasks.
+During the collection process, we retained the scene category
+Git-10M
+Fig. 2. The diverse image composition of the Git-10M dataset. Most images
+were collected from Google Earth, allowing public sharing and redistribution.
+labels for each image to enable more precise semantic de-
+scriptions during the subsequent text annotation phase. These
+diverse data sources significantly enhance the richness of the
+Git-10M dataset.
+To expand the dataset’s scale and geographic coverage,
+we further collected remote sensing images with various
+resolutions and scene types from Google Earth. This collec-
+tion process comprised two key steps: 1) randomly selecting
+regions worldwide to ensure broad sample distribution, and
+2) manually selecting specific areas to ensure comprehensive
+coverage of typical geographic features such as urban areas,
+forests, mountains, and deserts. Throughout this process, we
+preserved metadata for each image, including geographic
+location and resolution, which provided essential support for
+subsequent analysis and text annotation.
+After completing the image collection, we conducted strin-
+gent filtering and processing. First, duplicate or redundant
+ocean scenes were removed through manual screening to main-
+tain diversity in geographic distribution. Additionally, a subset
+of images exhibited issues with visual quality, such as noise
+and artifact, which could negatively impact the training of im-
+age generation models. To address this, an image enhancement
+model was trained on a private high-quality remote sensing
+dataset and applied to all collected images, significantly im-
+proving the overall image quality of the dataset. During the
+training of the model, we simulate various image degradation
+processes, such as blurring, noise addition, and compression,
+to create paired low-quality and high-quality images. We train
+the model using these paired images to learn the mapping
+from degraded images to their high-quality counterparts. This
+enhancement process helps to standardize image quality across
+the Git-10M dataset, making it more suitable for high-quality
+generative modeling. We will also release the enhancement
+model at https://github.com/Chen-Yang-Liu/Text2Earth
+Through the above multi-stage collection and processing
+workflow, Git-10M not only achieves a breakthrough in scale,
+but also shows remarkable improvements in quality, diversity,
+and geographical coverage.
+B. Text Annotation
+Given the scale of over 10 million images, manual an-
+notation of textual descriptions was infeasible. To address
+this challenge, we designed a automated annotation pipeline
+capable of efficiently generating high-quality text descriptions
+=====PAGE 5=====
+5
+Fig. 3. The diverse geospatial distribution of the Git-10M dataset. The yellow pixels represent the geographic locations where remote sensing images in
+Git-10M were sampled. The distribution shows that our dataset covers multiple continents and geographical regions, covering various typical scenes such as
+urban areas, forests, mountains, and deserts.
+that accurately reflect image content. This pipeline leverages
+the GPT-4o [82] API from OpenAI, combined with prompt
+optimization and annotation review strategies, to ensure both
+efficiency and accuracy.
+For images with metadata such as geographic location,
+resolution, or scene category labels, these attributes were
+incorporated as additional context in the prompts provided
+to the GPT-4o model, significantly improving the relevance
+of the generated text. For example, when processing an image
+labeled as an airport scene, the scene information “airport” was
+included in the prompt to guide the model toward generating a
+more semantically accurate description. To enhance the quality
+of text generation, the input prompts for GPT-4o underwent
+multiple iterative refinements. Compared to simple straight-
+forward instructions like “Describe the image content,” we
+developed more sophisticated prompts emphasizing semantic
+details such as scene context and geographic features.
+To ensure the reliability of the large-scale annotation,
+we established a review mechanism combining automated
+auditing and manual sampling inspections. The automated
+auditing process addressed potential issues arising from GPT-
+4o timeout responses or network errors, which could result in
+incorrect textual outputs due to unsuccessful image uploads.
+Additionally, periodic manual sampling was conducted to eval-
+uate the accuracy of the generated text. Errors identified during
+the review process were fed back into the annotation pipeline,
+prompting prompt design refinements and reprocessing of
+erroneous samples.
+This automated annotation pipeline successfully generated
+high-quality, semantically rich, and contextually accurate text
+descriptions for every image in the dataset. This provided
+critical support for the construction of Git-10M as a robust,
+high-quality resource for the remote sensing community.
+Git-10M
+Fig. 4. The distribution of images with varying resolutions in the Git-10M
+dataset. The dataset encompasses images ranging from high resolution (e.g.,
+0.5m/pixel) to low resolution (e.g., 128m /pixel).
+C. Dataset Analysis
+To comprehensively evaluate the quality and diversity of the
+Git-10M dataset, we conducted a systematic analysis of both
+the image and corresponding textual annotations from multiple
+dimensions. The analysis includes the following aspects:
+1) Geographical Coverage: We performed a statistical anal-
+ysis of the geographical distribution of images in the
+Git-10M dataset. As shown in Fig. 3, Git-10M spans
+multiple continents and geographical regions, covering
+various typical scenes such as urban areas, forests, moun-
+tains, deserts, and more. The wide geographical coverage
+ensures that the dataset can support the generation of
+real-world remote sensing images across different regions,
+natural features, and diverse scenes. Besides, as stated in
+the Section III-A, some images of our Git-10M dataset are
+collected from several public scene classification datasets,
+which provide explicit scene labels. The integration of
+these datasets ensures that Git-10M covers a wide variety
+of well-defined remote sensing scene types. For example,
+the AID dataset contains 30 typical scene categories,
+=====PAGE 6=====
+6
+Score
+Frequency Before After
+Before
+After
+Before After
+Score
+Frequency Before After
+Fig. 5. The quality score of images before and after enhancement processing
+for our Git-10M dataset. The results demonstrate a significant improvement
+after enhancement. An example is shown on the right.
+while the RSICB dataset contains 45 categories.
+2) Resolution Distribution : Fig. 4 illustrates the distribu-
+tion of images with varying resolutions in the Git-10M
+dataset. The dataset encompasses images ranging from
+high resolution (e.g., 0.5m /pixel) to low resolution (e.g.,
+128m/pixel). High-resolution images capture detailed fea-
+tures, making them suitable for tasks that require fine-
+grained information. On the other hand, low-resolution
+images provide a broader coverage of larger areas. The
+multi-resolution nature of the Git-10M dataset o ffers
+essential support for training models that can generate
+images at specific scales.
+3) Image Evaluation : To assess the e ffectiveness of our
+image enhancement model, we employed a widely used
+aesthetic model1 to evaluate the quality of images before
+and after image enhancement processing. As shown in
+Fig. 5, the results demonstrate a significant image qual-
+ity improvement after enhancement. High-quality images
+enhance the dataset’s visual appeal and provide reliable
+training data for the generative models.
+4) Text Analysis: We conducted a word cloud analysis on
+the texts in the Git-10M dataset, with the results pre-
+sented in Fig. 6. The word cloud highlights the richness
+and diversity of the textual descriptions, indicating the
+comprehensive range of concepts and objects covered.
+Besides, we also examined the distribution of text lengths
+(see Fig. 6). Each image is associated with a text of
+approximately 52 words on average, totaling more than
+10.5 million text samples and over 5.5 billion words
+across the entire dataset.
+In summary, the Git-10M dataset exhibits significant advan-
+tages in terms of geographical diversity, resolution distribution,
+image quality, and the richness of textual descriptions. These
+characteristics make it an invaluable resource for advancing
+remote sensing image generation research.
+IV . Text2Earth Foundation Model
+Building on the proposed Git-10M dataset, we developed
+Text2Earth, a 1.3 billion parameter generative foundation
+model tailored for large-scale remote sensing text2image gen-
+eration. This section details the model structure and a dynamic
+condition adaptation strategy for training and inference.
+1https://github.com/christophschuhmann/improved-aesthetic-predictor
+Length
+Frequency
+Fig. 6. Text Analysis. Top: the word cloud of the texts in the Git-10M dataset.
+Bottom: the distribution of text lengths in the Git-10M dataset shows that each
+textual description averages approximately 52 words, with the entire dataset
+comprising over 10.5 million text samples and more than 5.5 billion words.
+A. Structure of Text2Earth Model
+The design of an efficient and powerful foundation model is
+critical to addressing the demands of global-scale remote sens-
+ing image generation. Among various generative architectures,
+diffusion models stand out for their exceptional capability to
+model complex data distributions. Leveraging this, we propose
+Text2Earth, a di ffusion-based generative foundation model.
+As illustrated in Fig. 7, the structure of Text2Earth is built
+upon three core components: image compression encoding,
+conditional embedding mechanism, and di ffusion modelling.
+The Variational Autoencoder (V AE) is employed for e ffi-
+cient image compression and reconstruction. A U-Net with
+a cross-attention mechanism is used for multi-step denoising.
+OpenCLIP ViT-H text encoder [20] converts text into high-
+dimensional semantic embeddings. A resolution embedding
+module aims to encode image resolution as an implicit embed-
+ding. The text embeddings and resolution embedding will be
+incorporated into each denoising step of the di ffusion process.
+Our Text2Earth can generate entirely new remote sensing
+images consistent with the provided text and resolution or
+perform local editing on existing images while preserving the
+original structure. Users can input a white mask to specify the
+image region for generating visual content, which can either
+encompass the entire image or focus on a specific area.
+1) Image Compression Encoding : The V AE is employed
+to compress high-resolution remote sensing image pixels into
+a compact implicit space while preserving perceptual consis-
+tency between the implicit and pixel spaces [19]. This signif-
+=====PAGE 7=====
+7
+Denoising Unet
+??
+Resolution
+Text 
+EncoderText
+D
+...
+Timestep
++
+C
+Q\K\V
+???????????????
+VAE
+Encoder
+E
+E
+Diffusion Process
+??−???
+× ?
+??−???
+??
++
+Element-wise Add
+C
+C Concatation
+Fig. 7. The structure of the Text2Earth model equipped with 1.3 billion
+parameters. Text2Earth can generate entirely new images consistent with the
+provided text or perform local editing on existing images while preserving the
+original structure. Users can input a white mask to specify the image region
+for generating visual content, which can either encompass the entire image
+or focus on a specific area.
+icantly enhances computational e fficiency for the subsequent
+diffusion modelling, which is crucial for unbounded and large-
+scale remote sensing image generation.
+Given an input image x ∈ RH×W×C, the encoder E
+compresses it into an implicit representation z ∈ Rh×w×c,
+where h, w<H, W, thus reducing the dimensionality of the
+implicit space compared to the original image pixel space.
+The compression encoder involves multi-scale feature ex-
+traction with progressive downsampling, ensuring a compact
+yet information-rich implicit representation. The decoder D
+subsequently reconstructs the image ˆ x from the implicit rep-
+resentation z as follows:
+ˆx =D(z), where ˆ x≈ x.
+2) Diffusion Modeling : The di ffusion modeling is at the
+heart of Text2Earth, enabling high-quality and diverse image
+generation. The forward di ffusion process gradually corrupts
+the implicit representation z0 by adding Gaussian noise at the
+timestep t:
+zt =√ ¯αtz0 +
+p
+1− ¯αtϵ,
+where ϵ ∼N (0, 1) represents Gaussian noise, and ¯ αt is the
+cumulative scaling factor, which is defined as the product of
+individual scaling factors αi up to timestep t. Mathematically,
+it is defined as:
+¯αt =
+tY
+i=1
+αi.
+The reverse di ffusion process aims to denoise the implicit
+representation zt and reconstruct z0. The U-Net denoising
+network ϵθ is trained to predict the noise component ϵ using
+the following loss function:
+min
+θ
+LLDM = Ez0,ϵ∼N(0,1),t
+h
+∥ϵ−ϵθ(zt, t,τ,ρ )∥2i
+,
+whereτ represents the semantic embedding derived from text,
+and ρ denotes the resolution embedding. The well-trained
+diffusion models generate samples by progressive denoising
+from Gaussian noise.
+By performing diffusion modeling in the V AE’s compressed
+feature space, Text2Earth achieves a substantial reduction in
+computational requirements while preserving image fidelity.
+This makes Text2Earth suitable for large-scale and unbounded
+remote sensing image generation.
+3) Conditional Embedding Mechanism : The conditional
+embedding mechanism in Text2Earth integrates textual seman-
+tics and resolution control at each step of the reverse di ffusion
+process. This will guide noise prediction and ensures that the
+generated image aligns with both the textual description and
+the specified resolution, achieving precise and customizable
+image generation.
+Text2Earth utilizes the OpenCLIP ViT-H text encoder
+T [20] to transform the input text It to a high-dimensional
+semantic embedding τ:
+τ =T (It), τ ∈ RL×d.
+where L is the token length and of d is the embedding
+dimension. To effectively incorporate semantic information to
+guide visual content generation, Text2Earth employs a cross-
+attention mechanism, injecting the text embedding τ into the
+intermediate layers of the denoising U-Net. The cross-attention
+mechanism is defined as:
+Attention(Q, K, V) = Softmax
+ QK⊤
+√dk
+!
+V,
+where Q is derived from the noisy implicit representation zt,
+and K and V come from the text embedding τ. The scaling
+factor dk ensures numerical stability. This mechanism enables
+the model to dynamically focus on critical semantic features in
+the text, ensuring the generated image is semantically faithful
+to the textual description.
+To address the limitations of previous models in resolution
+control, Text2Earth introduces a resolution guidance mecha-
+nism that allows for flexible control over image resolution.
+Specifically, resolution information Is is encoded into the
+implicit space using a projection layer, producing a resolution
+embeddingρ.ρ is then combined with the timestep embedding
+gθ(t) as follows:
+cst =ρ + gθ(t) = fθ(Is) + gθ(t)
+This embedding is then input to the U-Net, which adjusts the
+generated image resolution at each di ffusion step.
+Furthermore, to extend the capabilities of Text2Earth to text-
+driven image editing tasks, a conditional masked image en-
+coding mechanism is introduced. Specifically, given an input-
+masked image xm∈ RH×W×C, the V AE encoder E generates
+the implicit representation zm ∈ Rh×w×cm. The zm is then
+concatenated with the implicit variable zt∈ Rh×w×c obtained
+from the di ffusion process along the channel dimension to
+form a joint conditional representation:
+zcond = [zm, zt]∈ Rh×w×(c+cm).
+The zcond is then passed into the denoising U-Net for noise
+prediction. This mechanism enables Text2Earth to not only
+generate entirely new remote sensing images consistent with
+the provided text and resolution but also perform local editing
+on existing images while preserving the original structure.
+For example, when certain regions of an image are masked,
+the model can generate coherent and natural restorations or
+=====PAGE 8=====
+8
+Algorithm 1 Training with Dynamic Conditioning
+1: repeat
+2: x0∼ q(x0) (Sample an image from the data distribution)
+3: z0 =E(x0) (V AE encoding)
+4: t∼ Uniform({1,..., T}) (Random time step)
+5: ϵ∼N (0, I) (Sample Gaussian noise)
+6: ctext∼ Bernoulli(p1) (Randomly drop text: 0 or 1)
+7: cres∼ Bernoulli(p2) (Randomly drop resolution: 0 or 1)
+8: It← the corresponding text of x0
+9: Is← the corresponding resolution of x0
+10: if ctext ==1 then
+11: τ←τ∅ (unknown text embedding)
+12: else
+13: τ←T (It) (text embedding)
+14: end if
+15: if cres ==0 then
+16: ρ←ρ∅ (unknown resolution embedding)
+17: else
+18: ρ← fθ(Is) (resolution embedding)
+19: end if
+20: Take gradient descent step on
+∇θ
+ϵ− ϵθ(√ ¯αtz0 +√1− ¯αtϵ, t,τ,ρ )
+
+2
+21: until converged
+modifications consistent with the input textual instructions.
+This capability broadens its applicability to scenarios requiring
+fine-grained image editing.
+B. Dynamic Condition Adaptation Strategy
+To enhance the robustness and adaptability of the
+Text2Earth model, we propose a Dynamic Condition Adap-
+tation (DCA) strategy. This strategy enables consistent and
+high-quality image generation. Besides, it can improve the
+model’s adaptability when conditional inputs, such as text or
+resolution, are missing. The DCA approach involves two key
+phases: training with dynamic conditioning and sampling with
+scalable condition guidance.
+1) Training with Dynamic Conditioning : During training,
+text and resolution conditions are randomly dropped with
+predefined probabilities. This strategy encourages the model
+to learn denoising dynamics and feature representations that
+are robust to incomplete or missing conditions, simulating real-
+world scenarios where inputs might be absent or unreliable.
+The training procedure incorporates both conditional and
+unconditional learning. When text and resolution conditions
+are present, the model learns to generate images that align
+closely with these inputs. When both conditions are dropped,
+the model learns to generate images based purely on noise,
+akin to traditional unconditional generation. This dynamic
+conditioning process ensures that Text2Earth can handle a
+wide range of input scenarios, enhancing its flexibility and
+robustness. The training steps are detailed in Algorithm 1.
+2) Sampling with Scalable Condition Guidance : During
+sampling, the DCA strategy leverages a mixture of conditional
+input and a null condition to refine the image generation pro-
+cess. This combination guides the denoising process to align
+generated images closely with the desired conditions while
+maintaining diversity and quality. Inspired by the classifier-free
+guidance technique [83], the Text2Earth model predicts two
+versions of the noise at each denoising step: one conditioned
+Algorithm 2 Sampling with Scalable Condition Guidance
+1: xT∼N (0, I) (Start with Gaussian noise)
+2: It← the input text
+3: Is← the input resolution
+4: τ←T (It) (text embedding)
+5: ρ← fθ(Is) (resolution embedding)
+6: for t = T,..., 1 do
+7: z∼N (0, I) if t> 1, else z = 0
+8: ϵg = (1 +ω)ϵθ(zt, t,τ,ρ )−ωϵθ(zt, t,τ ∅,ρ ∅)
+9: zt−1 = 1√αt
+
+zt− 1−αt√1− ¯αt
+ϵθ(zt, t,τ )
+
++σtz
+10: end for
+11: x0←D (z0) (V AE decoding)
+12: return x0 (Final generated image)
+on the input and one without conditioning. The final predicted
+noise ϵg is computed as a weighted combination of these two
+predictions:
+ϵg = (1 +ω)ϵθ(zt, t,τ,ρ )−ωϵθ(zt, t,τ ∅,ρ ∅)
+where ω is a guidance scale factor that controls the model’s
+reliance on the provided conditions. The sampling process is
+formalized in Algorithm 2.
+In summary, the DCA strategy equips Text2Earth with the
+ability to handle various input scenarios e ffectively, such as
+incomplete input conditions. Besides, this strategy facilitates
+the model to generate images that closely align with the input
+conditions while maintaining diversity and quality.
+V . Experiment
+A. Dataset
+1) Git-10M Dataset: The Git-10M dataset comprises 10
+million global remote sensing image-text pairs, spanning di-
+verse geographical locations and environmental conditions.
+This extensive dataset o ffers a robust foundation for training
+models capable of generating high-quality, diverse remote
+sensing imagery.
+2) RSICD Dataset: RSICD dataset is a widely used bench-
+mark dataset for remote sensing text2image generation. It
+contains 10,921 remote sensing images and corresponding text
+annotations. The dataset contains 30 types of common ground
+scenes, and the spatial resolution of images is not unique.
+This dataset was employed to evaluate our model’s adaptation
+to the small specific scene dataset. To further explore the
+multimodal image generation, we extend the RSICD dataset
+to a multimodal dataset. RGB images in the RSICD dataset
+were transformed into various modalities as follows:
+• Panchromatic (PAN) Images: Converted from original
+RGB images using grayscale transformation to simulate
+monochromatic imagery.
+• Near-Infrared (NIR) Images: Generated using pretrained
+models to simulate spectral information beyond the visi-
+ble spectrum.
+• Synthetic Aperture Radar (SAR) Images: Produced using
+a pretrained model based on the Pix2Pix framework,
+providing radar-like image representations.
+• Low-Resolution Images: Obtained by downsampling
+RGB images, simulating scenarios with constrained spa-
+tial resolutions.
+=====PAGE 9=====
+9
+• Foggy Images: Synthesized by adding fog to the original
+image using a classic fog simulation algorithm.
+B. Implementation Details
+Distributed training was conducted on a machine equipped
+with 8 NVIDIA A100 GPUs to manage the computational
+demands of training large-scale generative models. The train-
+ing setup utilized the AdamW optimizer with a learning rate
+of 0.0001, and a batch size of 1024 was chosen to maximize
+hardware utilization and ensure e fficient gradient updates. The
+generated image size is set to 256 × 256 pixels.
+A progressive training strategy was used to improve the
+model’s ability to generate diverse and high-quality remote
+sensing images. The model was initially trained on the
+complete Git-10M dataset, leveraging its extensive diversity
+to capture a wide range of spatial and spectral geographic
+features. The model was subsequently fine-tuned on a high-
+quality subset of the dataset, comprising samples with a score
+greater than 4.8 in Fig. 5. This refinement phase improved
+the fidelity and detail of the generated images. This two-stage
+approach allowed the model to learn from a broad dataset and
+refine its generation capabilities on a higher-quality sub-set.
+We developed two specialized versions of the Text2Earth
+model to address distinct remote sensing tasks. Text2Earth t
+was optimized for generating remote sensing images from
+text and resolution. Text2Earthe was tailored for image editing
+tasks. This flexibility allows Text2Earth to cater to a wide
+range of practical remote sensing applications.
+C. Evaluation Metrics
+The Fr´echet Inception Distance (FID) metric is widely used
+to evaluate generative models by measuring the perceptual
+similarity between generated and real images. It compares the
+distributions of features extracted from both sets in a shared
+feature space. A lower FID score indicates better quality and
+diversity of the generated images. The FID score is computed
+as follows:
+FID =∥µr−µg∥2
+2 + Tr(Σr + Σg− 2(ΣrΣg)1/2)
+where µr and Σr denote the mean and covariance of features
+extracted from the real image distribution. µg and Σg are the
+mean and covariance of features extracted from the generated
+image distribution, respectively. Tr denotes the trace of a
+matrix. The features for FID calculation are extracted from a
+pre-trained Inception-v3 network [84], ensuring a perceptually
+relevant image representation.
+Following previous studies [8], [73], we also employ the
+Zero-Shot classification Overall Accuracy (Cls-OA) metric to
+evaluate the semantic alignment between generated images and
+their textual descriptions. Specifically, a classification model
+(i.e., ResNet-18) is trained on generated images using text
+descriptions from the test set. This model is then used for zero-
+shot classification on the real test set without prior exposure
+to them during training. The OA metric thus measures the
+semantic coherence and relevance of the generated images to
+the textual prompts.
+TABLE II
+Comparisons between our Text2Earth model and previous text 2image
+methods on the RSICD dataset.
+Method FID↓ Zero-Shot
+Cls-OA↑ CLIP Score↑
+Attn-GAN [37] 95.81 32.56% 20.19
+DAE-GAN [85] 93.15 29.74% 19.69
+DF-GAN [29] 109.41 51.99% 19.76
+Lafite [31] 74.11 49.37% 22.52
+DALL-E [43] 191.93 28.59% 20.13
+Txt2Img-MHNvqvae [8] 175.36 41.46% 21.35
+Txt2Img-MHNvqgan [8] 102.44 65.72% 20.27
+RSDiff [74] 66.49 – –
+CRS-Diff [73] 50.72 69.31% 20.33
+Text2Earth (Ours) 24.49 90.26% 25.62
+Furthermore, to measure the semantic similarity between
+text and generated images, we also used the CLIP score, which
+is calculated as follows:
+CLIP Score = 1
+N
+NX
+i=1
+cos
+
+Eimage(Ii), Etext(Ti)
+
+× 100
+where Ii denotes the i-th generated image, Ti denotes the
+corresponding input text, Eimage and Etext represent the image
+encoder and text encoder of a pretrained CLIP model, respec-
+tively, and cos(·) denotes the cosine similarity between the two
+embedding vectors. The final CLIP score is the average cosine
+similarity across all N text-image pairs, reflecting the overall
+semantic alignment quality.
+D. Zero-Shot Text2Image Generation
+Different from previous methods that are limited to gen-
+erating images for specific scenes, Text2Earth is trained on
+our large-scale dataset, endowing it with robust capabilities
+for zero-shot text2image generation across a wide range of
+geographical and environmental features. It can generate spe-
+cific image content based on user-free text input, without
+scene-specific fine-tuning or retraining. As shown in Fig. 8,
+Text2Earth can generate a variety of scenes, including diverse
+geographical features such as mountains, rivers, urban areas,
+forests, and farmland. Additionally, Text2Earth is capable of
+generating remote sensing images at various resolutions based
+on user specifications. For example, as shown in Fig. 9, it can
+generate high-resolution images of urban landscapes with de-
+tailed buildings or low-resolution images depicting expansive
+forest covers. This versatility demonstrates the model’s ability
+to adapt to varying input conditions and user requirements.
+Text2Earth also demonstrates remarkable robustness in gen-
+erating realistic images, even in cases where key input condi-
+tions—such as text or resolution—are missing. For instance,
+the model can generate forest images at various scales when
+provided with text like “There is a dense forest” without
+a specified resolution. Besides, when only the resolution is
+provided without specific textual descriptions, the model can
+generate resolution-specific images with diverse scenes such
+=====PAGE 10=====
+10
+The river winds 
+through the 
+yellow desert
+Two tennis 
+courts are semi-
+surrounded by 
+several green 
+trees
+Several green 
+circular 
+farmlands are 
+neatly arranged 
+on the ground
+There is a red 
+building on the 
+meadow
+There are some 
+buildings with 
+white walls on a 
+commercial area
+The beach with 
+khaki sand and 
+the color of the 
+seawater is dark 
+blue
+There are yellow 
+desert with a 
+line of green 
+plants
+A dense 
+commercial area 
+has lots of 
+varied buildings
+There are houses 
+by the beach
+There are many 
+buildings on a 
+commercial area
+At the edge of 
+the desert you 
+can see a lake 
+and the green 
+mountains 
+nourished by the 
+lake 
+A curved road 
+passes through 
+the dense forest
+The forest has a 
+lot of dense 
+yellow trees and 
+some green 
+trees mixed 
+with yellow 
+trees
+There are many 
+houses on both 
+sides of the 
+highway
+There are a few 
+bunkers and a 
+few paths on 
+the large green 
+lawn on the golf 
+course and 
+many trees
+The industrial 
+area has lots of 
+neatly arranged 
+blue workshops
+An intersection 
+with sparse 
+traffic located in 
+a residential 
+area
+The nearly 
+circular island is 
+surrounded by 
+blue sea water, 
+there are 
+mountains with 
+vegetation on 
+the island
+Many trees are 
+around the lake
+The meadow is 
+dense but 
+uneven
+The mountains 
+are winding and 
+undulating
+There are many 
+white rocks and 
+brown earth on 
+the mountain
+The parking lot 
+is full of cars 
+next to some 
+trees
+There are many 
+rectangular 
+farmlands of 
+different colors
+The green river 
+with a winding 
+bank goes 
+through the 
+mountainous 
+area covered 
+with dense 
+vegetation
+The roundabout 
+is surrounded by 
+grass
+Countless ice 
+cubes of various 
+sizes are 
+connected into a 
+loose, Large 
+piece floating on 
+the blue sea
+The snowberg is 
+partly covered 
+with glaciers 
+and the 
+snowberg consist 
+of lots of ridges 
+and valleys
+There are much 
+snow and some 
+green land on 
+the snowberg
+A sparse 
+residential area 
+with several 
+buildings on a 
+green meadow
+There are some 
+storage tanks of 
+different sizes 
+beside a green 
+meadow
+Many 
+rectangular-
+shaped green 
+and tan mixed 
+rectangular 
+farmlands of 
+different sizes
+There are two 
+winding paths 
+in this wetland, 
+and the water is 
+dark green
+There are many 
+buildings 
+arranged neatly 
+in the mobile 
+home park
+There are some 
+roads go 
+through the 
+meadow
+There are green 
+forests and 
+meadows 
+around the lake
+There are some 
+trees and roads 
+by the beach
+Deep blue water 
+and off-white 
+road and forest
+There are two 
+parallel bridges, 
+And the color of 
+the water is 
+dark green
+There are clouds 
+over many 
+farmlands
+Fig. 8. Our Text2Earth demonstrates robust capabilities for zero-shot text2image generation across diverse geographical features based on user-free text input.
+It can generate a variety of scenes, including diverse geographical features such as mountain ranges, rivers, urban areas, forests, and farmland.
+=====PAGE 11=====
+11
+Resolution: 
+128m
+Resolution: 
+32m
+Resolution: 
+8m
+Resolution: 
+2m
+Resolution: 
+0.5m
+10
+12
+14
+16
+18
+Fig. 9. Generated images with di fferent resolutions solely by specifying the resolution condition, without any descriptive text.. Text2Earth can generate images
+reflecting a range of spatial resolutions—from high-resolution close-up views that capture fine details to lower-resolution images that cover larger areas. For
+example, in the generated images of mountainous regions, higher-resolution images exhibit detailed terrain features, while lower-resolution images depict
+broader landscape coverage, which aligns with real-world spatial resolution characteristics.
+Some white 
+storage tanks 
+are in a piece 
+of bareland
+Many green 
+trees are in a 
+piece of forest
+Resolution: 2mResolution: 0.5m Resolution: 1m
+Fig. 10. Resolution-conditioned image generation with same text prompts.
+as a forest or an urban area. This ability highlights the
+model’s robustness in handling incomplete or missing input
+data, making it adaptable for real-world applications where
+input conditions may be partial. This ability benefits from our
+proposed dynamic condition adaptation strategy described in
+Section IV-B.
+In Fig. 10, we tested whether the model could generate
+images with di fferent levels of spatial detail given the same
+1.5 2.0 4.03.0 6.05.0 7.0
+FID Score
+Zero-Shot Classification OA (%)
+Fig. 11. Evaluation results of our Text2Earth on the RSICD dataset under
+different guidance scale factors ω (i.e., 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0).
+textual description but di fferent resolution conditions. For
+example, using the prompt “Some white storage tanks are
+in a piece of bare land,” we generated images at 0.5m, 1m,
+and 2m per pixel resolutions. The resulting images exhibited
+variations in the relative size and density of the storage
+tanks that corresponded well with the specified resolutions,
+effectively mimicking real-world scale variations. Similarly,
+=====PAGE 12=====
+12
+TABLE III
+Ev aluation results of ourText2Earth on the RSICD dataset under
+different guidance scale factors.
+Guidance Scale FID Score↓ Zero-Shot Classification OA ↑
+ω = 1.5 28.22 91.72%
+ω = 2.0 25.89 90.71%
+ω = 3.0 24.49 90.26%
+ω = 4.0 24.32 87.92%
+ω = 5.0 24.42 84.91%
+ω = 6.0 26.17 81.25%
+ω = 7.0 28.92 79.30%
+for the prompt “Many green trees are in a piece of forest,” the
+level of detail in tree structures varied appropriately with the
+resolution, demonstrating the model’s capability to produce
+resolution-dependent images.
+The power of Text2Earth lies in its rich potential knowl-
+edge and general image generation capabilities learned from
+extensive training data, enabling it to adapt to new datasets
+through fine-tuning quickly. To further validate the robustness
+of Text2Earth as a foundation model, we fine-tuned it using
+the Low-Rank Adaptation (LoRA) technique [86] on the
+widely used remote sensing text2image benchmark dataset
+RSICD [17]. facilitates e fficient transfer learning by introduc-
+ing a small number of learnable low-rank matrices while keep-
+ing the original model parameters fixed. As shown in Table
+II, Text2Earth significantly outperforms previous methods on
+the RSICD dataset, achieving a remarkable improvement of
++26.23 in FID and +20.95% in Zero-Shot Classification OA.
+These improvements demonstrate the robustness of Text2Earth
+as a foundation model, which can e ffectively transfer its
+learned general knowledge to specific tasks through LoRA
+fine-tuning.
+Additionally, we present evaluation results of our
+Text2Earth on the RSICD dataset under di fferent guidance
+scale factors ω during inference, as shown in Table III
+and Fig. 11. When ω is set to 3.0, the model achieves a
+favourable trade-o ff between FID and Zero-shot Cls-OA,
+further highlighting its flexibility in balancing image quality
+and semantic alignment.
+E. Remote Sensing Image Editing
+In addition to text2image generation, Text2Earth exhibits
+exceptional versatility in remote sensing image editing, en-
+abling modifications to image content such as replacing or
+removing geographic features. These capabilities are valuable
+across a range of practical applications, as demonstrated in
+the examples shown in Fig. 12. For instance, in the cloud
+removal example presented in Fig. 12, Text2Earth is given an
+input image with cloud-covered regions and a corresponding
+mask. Text2Earth can understand the semantic structure of the
+image and successfully reconstruct the cloud-covered areas,
+ensuring natural scene continuity. This ability to e ffectively
+restore occluded regions while maintaining realistic transitions
+illustrates Text2Earth’s strength in image editing tasks.
+Moreover, Text2Earth can perform targeted scene modifica-
+tions based on user-provided text. For example, when given
+textual prompts alongside region-specific masks, the model
+can execute complex editing tasks, such as: replacing a lake
+with grassland, changing the colour of houses from red to
+blue, placing an oil tank on a meadow, planting trees near the
+beach, constructing a road through a forest, and replacing a
+house with a lake.
+Importantly, Text2Earth ensures that these modifications are
+seamlessly integrated with the surrounding areas, maintaining
+continuity and coherence. This makes it an ideal tool for
+customized remote sensing image editing, catering to diverse
+applications such as urban planning.
+F . Unbounded Remote Sensing Scene Construction
+One of the most innovative applications of Text2Earth
+is its ability to construct unbounded remote sensing scenes
+with consistent resolution through iterative outpainting. Using
+our Text2Earth, users can seamlessly and infinitely generate
+remote sensing images on a canvas, e ffectively overcoming
+the fixed-size limitations of traditional generative models.
+The unbounded expansion begins with a base image gen-
+erated from a user’s textual prompt. Users can iteratively
+provide new textual instructions to guide the content of
+subsequent image extensions. Text2Earth generates new image
+segments at the boundaries, ensuring smooth transitions and
+overall coherence across the expanded scene. We provide two
+examples in Figure 13. In the first example, we construct a
+large-scale coverage of the river area, with 3500×1100 pixels,
+where the river is extended unbounded with some vegetation
+on both sides. In the second example, we construct a creative
+large image with seamless transitions between multiple scenes.
+From the farmland area on the left to the forest, then to
+the wetland with lakes, then to the desert, followed by some
+vegetation, and finally transitioning to a blue ocean.
+Text2Earth’s resolution controllability is the key to main-
+taining visual coherence across the generated scene during
+the outpainting process. Using the same resolution at each
+step, our Text2Earth ensures that di fferent regions of the ex-
+panded scene maintain consistent spatial detail. Without such
+resolution control, varying image resolution across di fferent
+areas could result in a disjointed or unnatural appearance,
+undermining the overall coherence of the large scene.
+By generating unbounded scenes with consistent resolution,
+Text2Earth is valuable for applications requiring the visualiza-
+tion of extensive geographic areas. It will support the creative
+exploration of spatial planning scenarios, pushing beyond the
+constraints of traditional workflows.
+G. Cross-Modal Image Generation
+As a powerful generative foundation model, Text2Earth has
+acquired extensive knowledge and universal image generation
+capabilities from large-scale remote sensing data. These ca-
+pabilities not only enable superior performance in text2image
+generation tasks but also allow for e fficient transfer to diverse
+cross-modal image generation tasks through techniques like
+parameter-efficient fine-tuning. In this section, we explore
+=====PAGE 13=====
+13
+A blue building
+ A green lake
+White oil tank
+ Some trees
+ A curved road
+Green meadow
+A image
+Fig. 12. Some examples in remote sensing image editing. Text2Earth exhibits exceptional versatility in remote sensing image editing, enabling modifications
+to image content such as removing clouds, and replacing or adding geographic features.
+a) 3500×1100
+b) 3700×1300
+Text
+ Text Text
+Fig. 13. Unbounded remote sensing scenes through iterative outpainting. Users can seamlessly and infinitely expand remote sensing images on a canvas,
+effectively overcoming the fixed-size limitations of traditional generative models.
+=====PAGE 14=====
+14
+a large number 
+of lawns are 
+planted on both 
+sides of the river
+many buildings 
+and green trees 
+are in a dense 
+residential area
+many tall trees 
+were planted 
+around the 
+house with a 
+brown roof
+many pieces of 
+farmlands are 
+orderly together
+Text2NIR
+it is a polygonal 
+deep green pond 
+surrounded by 
+meadow and 
+farmland
+some green 
+trees and 
+buildings are in 
+two sides of 
+river with a 
+bridge over it
+there is a 
+ploygon port 
+with several 
+boats near the 
+road
+there are all 
+sorts of color 
+car parking lot
+Text2SAR
+a bridge is on a 
+river with some 
+buildings in two 
+sides of it
+many green 
+plants are in 
+two sides of a 
+river
+most region the 
+sparse 
+residential area 
+are covered 
+with green trees
+next to the road 
+was a vast 
+meadow
+Text2PAN
+a red building is 
+surrounded by 
+many green 
+trees and some 
+meadows
+many pieces of 
+farmlands are 
+together
+the sea is 
+beating the 
+golden sands
+a large number 
+of white ships 
+were parked 
+around the 
+harbor
+Text2RGB
+Fig. 14. Text-Driven Multi-Modal Image Generation. Text2Earth can generate high-quality images. For instance, in the generated NIR images, vegetation
+areas exhibit high pixel values, aligning with the physical imaging principles of NIR, where green vegetation reflects strongly in the near-infrared spectrum.
+Text2Earth’s potential in two key categories of cross-modal
+image generation tasks.
+1) Text-Driven Multi-Modal Image Generation :
+Text2Earth has gained a profound understanding of image
+semantics and structural information. It can be used to
+generate multi-modal remote sensing images, including RGB,
+SAR, NIR, and PAN images. To achieve this, we employed
+the LoRA technique [86], which introduces a small number
+of learnable low-rank parameters into the model’s attention
+layers while keeping the pre-trained parameters frozen. This
+approach o ffers substantial computational e fficiency, making
+it ideal for resource-constrained environments.
+We fine-tuned Text2Earth using LoRA on the RSICD
+dataset to facilitate text-driven multi-modal image generation
+tasks, such as Text2SAR, Text2NIR, and Text2PAN. The
+results are illustrated in Fig. 14. The experiments demonstrate
+that Text2Earth can generate multi-modal images with high
+quality and semantic consistency. For instance, in the gener-
+ated NIR images, green vegetation areas exhibit high pixel
+values, aligning with the physical imaging principles of NIR,
+where green vegetation reflects strongly in the near-infrared
+spectrum. These results underscore Text2Earth’s ability to ef-
+fectively transfer its general knowledge to multi-modal remote
+sensing image generation tasks.
+Table IV shows quantitative evaluation on text-driven multi-
+modal image generation. FID scores across different modalities
+are not directly comparable because the FID for each modality
+is computed using an Inception V3 model pre-trained on
+data specific to that modality. Besides, unlike optical images
+(RGB, NIR, and PAN), SAR images are captured through
+TABLE IV
+Text-Driven Multi-Modal Image Generation. LoRA is used to fine -tune our
+Text2Earth on the multi-modal image data.
+Multi-Modal Generation FID Score↓ Zero-Shot Cls-OA↑
+Text2RGB 24.49 90.26%
+Text2PAN 4.39 88.46%
+Text2SAR 68.83 34.42%
+Text2NIR 2.05 82.08%
+microwave radar signals, which makes their visual appearance
+fundamentally di fferent from optical images. SAR images
+often contain speckle noise and lack significant color and
+detailed texture information. These factors reduce the amount
+of semantic information available for scene classification tasks,
+rendering scene classification on SAR images inherently more
+challenging than on RGB, NIR, or PAN images. This leads to
+a low Zero-Shot Cls-OA score for the Text2SAR generation.
+In summary, the primary purpose of Table IV is to provide
+baseline benchmark results for future text-driven multi-modal
+image generation research rather than to directly compare
+performance across modalities.
+2) Image-to-Image Translation: In addition to text-driven
+multi-modal generation, Text2Earth also exhibits potential
+in image-to-image translation tasks, containing cross-modal
+translation and image enhancement, such as PAN to RGB
+(PAN2RGB), NIR to RGB (NIR2RGB), PAN to NIR
+(PAN2NIR), super-resolution, and image dehazing. To imple-
+ment these tasks, we froze the parameters of the Text2Earth
+=====PAGE 15=====
+15
+RGB2SARRGB2NIR
+SAR2RGB
+NIR2RGB
+PAN2RGB
+NIR2Gray
+SAR2NIR
+RGB2Gray
+SAR2Gray NIR2SAR
+Gray2SAR
+PAN2NIR
+Super-Resolution
+ Image Dehazing
+Fig. 15. Image-to-image translation, containing cross-modal translation and image enhancement, such as PAN to RGB (PAN2RGB), NIR to RGB (NIR2RGB),
+and PAN to SAR (PAN2SAR), low-resolution-to-high-resolution (LR2HR), and image defogging.
+model and incorporated a trainable module inspired by Con-
+trolNet [62] to encode the conditional input modality. The
+target modality is generated while preserving Text2Earth’s
+inherent image generation process.
+We conducted image-to-image translation experiments using
+the RSICD dataset, covering tasks like PAN2RGB, NIR2RGB,
+and PAN2SAR. The results, as shown in Fig. 15, demon-
+strate that Text2Earth e ffectively translates between di fferent
+modalities with high fidelity. For example, in the NIR2RGB
+translation, the generated RGB images faithfully represent
+vegetation cover areas corresponding to high-intensity regions
+in the NIR images, adhering to the physical properties of
+NIR imaging. In the super-resolution task, the model exhibits
+remarkable detail recovery capabilities, e ffectively performing
+large-scale image super-resolution. Additionally, for the image
+dehazing, the model can e ffectively remove fog to enhance
+image quality. These results further validate Text2Earth’s abil-
+ity to capture and transfer semantic features across di fferent
+modalities, producing cross-modal images with high quality
+and consistency.
+In summary, the experimental results above demonstrate
+Text2Earth’s outstanding performance in both multi-modal and
+cross-modal remote sensing image generation tasks. Its adapt-
+ability and extensibility as a generative foundation model make
+it a promising tool for a wide range of applications, including
+remote sensing image generation, image enhancement, and
+multimodal data analysis.
+H. More Applications
+1) Data Augmentation : We explored using Text2Earth-
+generated synthetic images as a data augmentation tool for
+remote sensing scene classification. Specifically, we selected
+TABLE V
+Accuracy of the downstream remote sensing image classification task w/ and
+w/o data augmentation.
+Training Data VGG-19 ResNet-18 ViT-B-16 Swin-s
+w./o. Augment 85.39 87.24 90.94 92.21
+w. Augment 91.04 93.86 94.74 96.10
+1,027 text-image-category triplets from the RSICD dataset as
+training samples and generated over 20,000 synthetic images
+based on their textual descriptions. We then trained four widely
+used classification models, including VGG-19, ResNet-18,
+ViT-B-16, and Swin-S, under two configurations: (i) using only
+the original training samples and (ii) using a combination of
+the original samples with the synthetic images. As demon-
+strated in Table V, all models showed consistent performance
+improvements when augmented with the generated images,
+thereby confirming that Text2Earth can serve as an e ffective
+data augmentation engine.
+2) Remote Sensing Vision-Language Contrastive Pre-
+training Foundation Model : We further explored the appli-
+cation of our Git-10M dataset to pretrain a vision-language
+foundation model using the contrastive learning framework.
+We named this model Git-RSCLIP. We then conducted zero-
+shot classification experiments on multiple publicly available
+remote sensing image classification datasets by computing the
+similarities of images and textualized scene category prompts
+to evaluate the performance of our Git-RSCLIP model. In Ta-
+ble VI, the experimental results demonstrate that Git-RSCLIP
+significantly outperforms previous remote sensing CLIP mod-
+els, such as RemoteCLIP and GeoRSCLIP, confirming the
+=====PAGE 16=====
+16
+TABLE VI
+Comparison of zero-Shot classification accuracy between our model and the previous CLIP Models on multiple remote sensing scene classification datasets.
+Method OPTIMAL31 RSC11 RSICB128 WHURS19 RSSCN7 CLRS Average
+CLIP [20] 60.00 45.29 25.23 77.41 52.25 56.48 52.78
+SkyCLIP50 [79] 77.31 60.47 38.60 78.31 55.07 61.03 61.80
+RemoteCLIP [87] 81.99 67.05 34.25 92.54 51.71 66.04 65.60
+GeoRSCLIP [23] 83.33 67.37 35.48 89.45 62.54 69.67 67.97
+Git-RSCLIP (Ours) 95.00 66.96 52.25 93.93 63.50 65.18 72.80
+effectiveness of our large-scale dataset. We have made the
+Git-RSCLIP model publicly available on our project page:
+https://github.com/Chen-Yang-Liu/Text2Earth
+VI. L imitation and Discussion for Text2Earth Model
+While our Text2Earth model demonstrates robust perfor-
+mance in large-scale text-driven remote sensing image genera-
+tion, it exhibits certain limitations that merit further discussion.
+One notable limitation is its inability to precisely control
+the number of objects specified in the textual descriptions,
+particularly when a large quantity is involved. For instance, as
+illustrated in Fig. 16, when given the prompt “Twelve storage
+tanks are near some green trees and buildings,” the model
+generated only nine storage tanks. Similarly, the model is
+asked to generate seven farmlands but generates eight in the
+last example. These results suggest that, although Text2Earth
+can capture numerical cues to a certain extent, it struggles with
+fine-grained numerical control—a capability that is critical
+for accurately reflecting detailed quantitative information in
+generated scenes.
+This limitation likely arises from the inherent challenges
+of aligning textual numerical information with spatial visual
+content during the generative process. The current model
+primarily focuses on learning high-level semantic relationships
+rather than enforcing strict quantitative constraints on object
+counts. To address this issue, future research could explore
+the integration of specialized numerical reasoning modules or
+enhanced conditioning strategies that explicitly account for
+numerical details. Additionally, incorporating more training
+examples with explicit numerical descriptions may further im-
+prove the model’s ability to precisely control object quantity.
+In summary, while Text2Earth represents a significant ad-
+vancement in remote sensing image generation, addressing its
+limitations in object quantity control is an important avenue
+for future work. Improving this aspect will not only enhance
+the fidelity of generated images but also expand the model’s
+applicability in real-world remote sensing applications—such
+as urban planning and disaster assessment—where precise
+quantitative control is essential.
+VII. F uture Work
+In this paper, we proposed a global-scale remote sensing
+image generation dataset and a generative foundation model
+based on di ffusion models, Text2Earth. Through extensive
+experiments, we demonstrated the remarkable performance of
+Text2Earth across various remote sensing image generation
+Some white 
+storage tanks 
+are in a piece 
+of bareland
+Many green 
+trees are in a 
+piece of forest
+Resolution: 2mResolution: 0.5m Resolution: 1m
+Six tennis 
+courts is 
+surrounded 
+by some 
+buildings and 
+two roads
+Twelve 
+storage tanks 
+are near some 
+green trees 
+and buildings
+There are two 
+green cars in 
+the parking 
+lot
+A white ship 
+in the vast sea
+many cars are 
+parked beside 
+the road
+(a)
+(b)
+A baseball 
+field and 
+eight tennis 
+courts are 
+next to a 
+parking lot
+Twelve 
+storage tanks 
+are near some 
+green trees 
+and buildings
+Seven green 
+circular 
+farmlands are 
+neatly 
+arranged on 
+the ground
+There are six 
+airplanes in 
+the airport
+Fig. 16. Some failure cases about inaccurate control over object quantity.
+These results suggest that, although Text2Earth can capture numerical cues
+to a certain extent, it struggles with fine-grained numerical control.
+tasks, including zero-shot image generation, image editing,
+unbounded scene construction, text-driven multimodal image
+generation, and cross-modal image generation. These achieve-
+ments not only demonstrate the potential of Text2Earth in
+generative tasks but also open new avenues for research in
+the field of remote sensing image generation. Future research
+could focus on the following aspects.
+Exploring Broader Applications of Text2Earth. The advan-
+tage of Text2Earth lies in the latent knowledge it has learned
+from large-scale remote sensing data, especially its deep
+understanding of image semantics and structural information.
+This capability makes it well-suited not only for image gener-
+ation tasks but also for promising applications such as image
+enhancement, object detection, and change detection. Future
+work could investigate how to adapt and extend Text2Earth
+for these domains.
+Developing Autoregressive Foundation Models. Autoregres-
+sive generative models, such as DALL-E [43] and V AR [49]
+models, have shown exceptional scalability and performance
+in image generation, particularly under the scaling laws of
+large datasets. Future research could explore training autore-
+gressive remote sensing generative foundation models with
+even greater representational capacity using our proposed Git-
+10M dataset. These models might o ffer advantages in terms
+of scalability, performance, and the ability to capture complex
+spatial-temporal dependencies in remote sensing data.
+Building Large and Diverse Multimodal Paired Datasets.
+The scale and diversity of datasets are critical drivers of
+advancements in generative models. While our current dataset
+focuses on the pairing of visible-spectrum images with text,
+remote sensing data contains other crucial modalities, such
+=====PAGE 17=====
+17
+as SAR, NIR, and hyperspectral images. These modalities
+have unique physical characteristics and diverse application
+scenarios. Future e fforts could aim to construct large-scale
+remote sensing datasets encompassing a broader range of
+paired modalities. Such datasets would not only facilitate
+in-depth research into cross-modal generation tasks but also
+advance multimodal learning in the remote sensing field.
+VIII. C onclusion
+Previous remote sensing text2image generation research
+faces challenges in terms of dataset size and model ca-
+pabilities. To this end, we present Git-10M, a global-scale
+remote sensing image-text pair dataset, covering diverse ge-
+ographic regions globally and including rich resolution and
+geospatial metadata. Based on this dataset, we developed the
+Text2Earth foundation model, which overcomes the limitations
+of previous methods in terms of global-scale, multi-resolution
+controllable, and unbounded text2image generation. The ex-
+periments demonstrate that Text2Earth not only excels in
+zero-shot text2image generation but also demonstrates robust
+generalization and flexibility across multiple tasks such as
+image editing, and cross-modal translation. On the previous
+benchmark dataset, Text2Earth surpasses the previous models
+with a significant improvement of +26.23 FID and +20.95%
+Zero-shot Cls-OA metric. As a generative foundation model,
+Text2Earth has the potential to advance a broader range of
+remote sensing image generation and processing tasks.
+References
+[1] X. Li, C. Wen, Y . Hu, Z. Yuan, and X. X. Zhu, “Vision-language models
+in remote sensing: Current progress and future trends,” IEEE Geoscience
+and Remote Sensing Magazine , 2024.
+[2] F. Zhan, Y . Yu, R. Wu, J. Zhang, S. Lu, L. Liu, A. Kortylewski,
+C. Theobalt, and E. Xing, “Multimodal image synthesis and editing: The
+generative ai era,” IEEE Transactions on Pattern Analysis and Machine
+Intelligence, vol. 45, no. 12, pp. 15 098–15 119, 2023.
+[3] N. Zhang and H. Tang, “Text-to-image synthesis: A decade survey,”
+2024. [Online]. Available: https: //arxiv.org/abs/2411.16164
+[4] S. Lu, J. Guo, J. R. Zimmer-Dauphinee, J. M. Nieusma, X. Wang,
+P. VanValkenburgh, S. A. Wernke, and Y . Huo, “Ai foundation models
+in remote sensing: A survey,” arXiv preprint arXiv:2408.03464 , 2024.
+[5] A. Xiao, W. Xuan, J. Wang, J. Huang, D. Tao, S. Lu, and N. Yokoya,
+“Foundation models for remote sensing and earth observation: A
+survey,” 2024. [Online]. Available: https://arxiv.org/abs/2410.16602
+[6] Y . Zhou, L. Feng, Y . Ke, X. Jiang, J. Yan, X. Yang, and W. Zhang, “To-
+wards vision-language geo-foundation model: A survey,” arXiv preprint
+arXiv:2406.09385, 2024.
+[7] C. Liu, J. Zhang, K. Chen, M. Wang, Z. Zou, and Z. Shi, “Remote
+sensing temporal vision-language models: A comprehensive survey,”
+2024. [Online]. Available: https: //arxiv.org/abs/2412.02573
+[8] Y . Xu, W. Yu, P. Ghamisi, M. Kopp, and S. Hochreiter, “Txt2img-
+mhn: Remote sensing image generation from text using modern hopfield
+networks,” IEEE Transactions on Image Processing , vol. 32, pp. 5737–
+5750, 2023.
+[9] Z. Yu, C. Liu, L. Liu, Z. Shi, and Z. Zou, “Metaearth: A generative foun-
+dation model for global-scale remote sensing image generation,” IEEE
+Transactions on Pattern Analysis and Machine Intelligence , vol. 47,
+no. 3, pp. 1764–1781, 2025.
+[10] M. Espinosa and E. J. Crowley, “Generate your own scotland:
+Satellite image generation conditioned on maps,” arXiv preprint
+arXiv:2308.16648, 2023.
+[11] X. X. Zhu, D. Tuia, L. Mou, G.-S. Xia, L. Zhang, F. Xu, and
+F. Fraundorfer, “Deep learning in remote sensing: A comprehensive
+review and list of resources,” IEEE Geoscience and Remote Sensing
+Magazine, vol. 5, no. 4, pp. 8–36, 2017.
+[12] D. Tuia, K. Schindler, B. Demir, X. X. Zhu, M. Kochupillai, S. D ˇzeroski,
+J. N. van Rijn, H. H. Hoos, F. Del Frate, M. Datcu, V . Markl, B. Le Saux,
+R. Schneider, and G. Camps-Valls, “Artificial intelligence to advance
+earth observation: A review of models, recent trends, and pathways
+forward,” IEEE Geoscience and Remote Sensing Magazine , pp. 2–25,
+2024.
+[13] K. Chen, C. Liu, H. Chen, H. Zhang, W. Li, Z. Zou, and Z. Shi,
+“Rsprompter: Learning to prompt for remote sensing instance seg-
+mentation based on visual foundation model,” IEEE Transactions on
+Geoscience and Remote Sensing , 2024.
+[14] C. Liu, R. Zhao, and Z. Shi, “Remote sensing image captioning based
+on multi-layer aggregated transformer,” IEEE Geoscience and Remote
+Sensing Letters, pp. 1–1, 2022.
+[15] C. Liu, K. Chen, H. Zhang, Z. Qi, Z. Zou, and Z. Shi, “Change-agent:
+Toward interactive comprehensive remote sensing change interpretation
+and analysis,” IEEE Transactions on Geoscience and Remote Sensing ,
+vol. 62, pp. 1–16, 2024.
+[16] B. Qu, X. Li, D. Tao, and X. Lu, “Deep semantic understanding of high
+resolution remote sensing image,” in 2016 International conference on
+computer, information and telecommunication systems (Cits) . IEEE,
+2016, pp. 1–5.
+[17] X. Lu, B. Wang, X. Zheng, and X. Li, “Exploring models and data
+for remote sensing image caption generation,” IEEE Transactions on
+Geoscience and Remote Sensing , vol. 56, no. 4, pp. 2183–2195, 2018.
+[18] P. Dhariwal and A. Nichol, “Di ffusion models beat gans on image
+synthesis,” Advances in neural information processing systems , vol. 34,
+pp. 8780–8794, 2021.
+[19] R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Ommer, “High-
+resolution image synthesis with latent di ffusion models,” in Proceedings
+of the IEEE/CVF conference on computer vision and pattern recognition,
+2022, pp. 10 684–10 695.
+[20] A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal,
+G. Sastry, A. Askell, P. Mishkin, J. Clark et al., “Learning transferable
+visual models from natural language supervision,” in International
+conference on machine learning . PMLR, 2021, pp. 8748–8763.
+[21] O. Ronneberger, P. Fischer, and T. Brox, “U-net: Convolutional networks
+for biomedical image segmentation,” in International Conference on
+Medical image computing and computer-assisted intervention. Springer,
+2015, pp. 234–241.
+[22] Q. Cheng, H. Huang, Y . Xu, Y . Zhou, H. Li, and Z. Wang, “Nwpu-
+captions dataset and mlca-net for remote sensing image captioning,”
+IEEE Transactions on Geoscience and Remote Sensing , vol. 60, pp. 1–
+19, 2022.
+[23] Z. Zhang, T. Zhao, Y . Guo, and J. Yin, “Rs5m and georsclip: A large
+scale vision-language dataset and a large vision-language model for
+remote sensing,” IEEE Transactions on Geoscience and Remote Sensing,
+2024.
+[24] C. Zhang, C. Zhang, M. Zhang, and I. S. Kweon, “Text-to-
+image di ffusion models in generative ai: A survey,” arXiv preprint
+arXiv:2303.07909, 2023.
+[25] C. Liu, R. Zhao, H. Chen, Z. Zou, and Z. Shi, “Remote sensing image
+change captioning with dual-branch transformers: A new method and
+a large scale dataset,” IEEE Transactions on Geoscience and Remote
+Sensing, vol. 60, pp. 1–20, 2022.
+[26] C. Liu, R. Zhao, J. Chen, Z. Qi, Z. Zou, and Z. Shi, “A decoupling
+paradigm with prompt learning for remote sensing image change cap-
+tioning,” IEEE Transactions on Geoscience and Remote Sensing , 2023.
+[27] C. Liu, J. Yang, Z. Qi, Z. Zou, and Z. Shi, “Progressive scale-aware
+network for remote sensing image change captioning,” in IGARSS 2023
+- 2023 IEEE International Geoscience and Remote Sensing Symposium ,
+2023, pp. 6668–6671.
+[28] I. Goodfellow, J. Pouget-Abadie, M. Mirza, B. Xu, D. Warde-Farley,
+S. Ozair, A. Courville, and Y . Bengio, “Generative adversarial networks,”
+Communications of the ACM , vol. 63, no. 11, pp. 139–144, 2020.
+[29] M. Tao, H. Tang, F. Wu, X.-Y . Jing, B.-K. Bao, and C. Xu, “Df-gan: A
+simple and effective baseline for text-to-image synthesis,” inProceedings
+of the IEEE/CVF conference on computer vision and pattern recognition,
+2022, pp. 16 515–16 525.
+[30] P. Esser, R. Rombach, and B. Ommer, “Taming transformers for high-
+resolution image synthesis,” in Proceedings of the IEEE/CVF conference
+on computer vision and pattern recognition , 2021, pp. 12 873–12 883.
+[31] Y . Zhou, R. Zhang, C. Chen, C. Li, C. Tensmeyer, T. Yu, J. Gu,
+J. Xu, and T. Sun, “Towards language-free training for text-to-image
+generation,” in Proceedings of the IEEE /CVF conference on computer
+vision and pattern recognition , 2022, pp. 17 907–17 917.
+[32] M. Tao, B.-K. Bao, H. Tang, and C. Xu, “Galip: Generative adversarial
+clips for text-to-image synthesis,” in Proceedings of the IEEE /CVF
+=====PAGE 18=====
+18
+Conference on Computer Vision and Pattern Recognition , 2023, pp.
+14 214–14 223.
+[33] S. Ye, H. Wang, M. Tan, and F. Liu, “Recurrent a ffine transformation
+for text-to-image synthesis,” IEEE Transactions on Multimedia, vol. 26,
+pp. 462–473, 2023.
+[34] X. Pan, A. Tewari, T. Leimk ¨uhler, L. Liu, A. Meka, and C. Theobalt,
+“Drag your gan: Interactive point-based manipulation on the generative
+image manifold,” in ACM SIGGRAPH 2023 Conference Proceedings ,
+2023, pp. 1–11.
+[35] M. Mirza, “Conditional generative adversarial nets,” arXiv preprint
+arXiv:1411.1784, 2014.
+[36] H. Zhang, T. Xu, H. Li, S. Zhang, X. Wang, X. Huang, and D. N.
+Metaxas, “Stackgan: Text to photo-realistic image synthesis with stacked
+generative adversarial networks,” in Proceedings of the IEEE interna-
+tional conference on computer vision , 2017, pp. 5907–5915.
+[37] T. Xu, P. Zhang, Q. Huang, H. Zhang, Z. Gan, X. Huang, and
+X. He, “Attngan: Fine-grained text to image generation with attentional
+generative adversarial networks,” in Proceedings of the IEEE conference
+on computer vision and pattern recognition , 2018, pp. 1316–1324.
+[38] T. Qiao, J. Zhang, D. Xu, and D. Tao, “Mirrorgan: Learning text-to-
+image generation by redescription,” in Proceedings of the IEEE /CVF
+conference on computer vision and pattern recognition, 2019, pp. 1505–
+1514.
+[39] M. Kang, J.-Y . Zhu, R. Zhang, J. Park, E. Shechtman, S. Paris, and
+T. Park, “Scaling up gans for text-to-image synthesis,” in Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition,
+2023, pp. 10 124–10 134.
+[40] Y . Xu, Y . Zhao, Z. Xiao, and T. Hou, “Ufogen: You forward once large
+scale text-to-image generation via di ffusion gans,” in Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition ,
+2024, pp. 8196–8206.
+[41] J. Gui, Z. Sun, Y . Wen, D. Tao, and J. Ye, “A review on generative
+adversarial networks: Algorithms, theory, and applications,” IEEE trans-
+actions on knowledge and data engineering , vol. 35, no. 4, pp. 3313–
+3332, 2021.
+[42] A. Jabbar, X. Li, and B. Omar, “A survey on generative adversarial
+networks: Variants, applications, and training,” ACM Computing Surveys
+(CSUR), vol. 54, no. 8, pp. 1–49, 2021.
+[43] A. Ramesh, M. Pavlov, G. Goh, S. Gray, C. V oss, A. Radford, M. Chen,
+and I. Sutskever, “Zero-shot text-to-image generation,” in International
+conference on machine learning . Pmlr, 2021, pp. 8821–8831.
+[44] M. Ding, Z. Yang, W. Hong, W. Zheng, C. Zhou, D. Yin, J. Lin, X. Zou,
+Z. Shao, H. Yang et al., “Cogview: Mastering text-to-image generation
+via transformers,” Advances in neural information processing systems ,
+vol. 34, pp. 19 822–19 835, 2021.
+[45] J. Yu, Y . Xu, J. Y . Koh, T. Luong, G. Baid, Z. Wang, V . Va-
+sudevan, A. Ku, Y . Yang, B. K. Ayan et al. , “Scaling autoregres-
+sive models for content-rich text-to-image generation,” arXiv preprint
+arXiv:2206.10789, vol. 2, no. 3, p. 5, 2022.
+[46] W. He, S. Fu, M. Liu, X. Wang, W. Xiao, F. Shu, Y . Wang, L. Zhang,
+Z. Yu, H. Li et al. , “Mars: Mixture of auto-regressive models for
+fine-grained text-to-image synthesis,” arXiv preprint arXiv:2407.07614 ,
+2024.
+[47] O. Gafni, A. Polyak, O. Ashual, S. Sheynin, D. Parikh, and Y . Taigman,
+“Make-a-scene: Scene-based text-to-image generation with human pri-
+ors,” in European Conference on Computer Vision. Springer, 2022, pp.
+89–106.
+[48] C. Liu, K. Chen, B. Chen, H. Zhang, Z. Zou, and Z. Shi, “Rscama:
+Remote sensing image change captioning with state space model,” IEEE
+Geoscience and Remote Sensing Letters , 2024.
+[49] K. Tian, Y . Jiang, Z. Yuan, B. Peng, and L. Wang, “Visual autoregressive
+modeling: Scalable image generation via next-scale prediction,” arXiv
+preprint arXiv:2404.02905, 2024.
+[50] Y . He, F. Chen, Y . He, S. He, H. Zhou, K. Zhang, and B. Zhuang, “Zipar:
+Accelerating autoregressive image generation through spatial locality,”
+arXiv preprint arXiv:2412.04062 , 2024.
+[51] B. Chen, L. Liu, C. Liu, Z. Zou, and Z. Shi, “Spectral-cascaded
+diffusion model for remote sensing image spectral super-resolution,”
+IEEE Transactions on Geoscience and Remote Sensing , vol. 62, pp.
+1–14, 2024.
+[52] J. Ho, A. Jain, and P. Abbeel, “Denoising di ffusion probabilistic models,”
+Advances in neural information processing systems , vol. 33, pp. 6840–
+6851, 2020.
+[53] A. Nichol, P. Dhariwal, A. Ramesh, P. Shyam, P. Mishkin, B. McGrew,
+I. Sutskever, and M. Chen, “Glide: Towards photorealistic image gen-
+eration and editing with text-guided di ffusion models,” arXiv preprint
+arXiv:2112.10741, 2021.
+[54] A. Ramesh, P. Dhariwal, A. Nichol, C. Chu, and M. Chen, “Hierarchical
+text-conditional image generation with clip latents,” arXiv preprint
+arXiv:2204.06125, vol. 1, no. 2, p. 3, 2022.
+[55] R. Rombach, A. Blattmann, and B. Ommer, “Text-guided synthesis
+of artistic images with retrieval-augmented di ffusion models,” arXiv
+preprint arXiv:2207.13038, 2022.
+[56] N. Huang, F. Tang, W. Dong, and C. Xu, “Draw your art dream: Diverse
+digital art synthesis with multimodal guided di ffusion,” in Proceedings
+of the 30th ACM International Conference on Multimedia , 2022, pp.
+1085–1094.
+[57] G. Couairon, J. Verbeek, H. Schwenk, and M. Cord, “Di ffedit: Diffusion-
+based semantic image editing with mask guidance,” arXiv preprint
+arXiv:2210.11427, 2022.
+[58] B. Kawar, S. Zada, O. Lang, O. Tov, H. Chang, T. Dekel, I. Mosseri, and
+M. Irani, “Imagic: Text-based real image editing with di ffusion models,”
+in Proceedings of the IEEE /CVF Conference on Computer Vision and
+Pattern Recognition, 2023, pp. 6007–6017.
+[59] U. Singer, A. Polyak, T. Hayes, X. Yin, J. An, S. Zhang, Q. Hu, H. Yang,
+O. Ashual, O. Gafni et al. , “Make-a-video: Text-to-video generation
+without text-video data,” arXiv preprint arXiv:2209.14792 , 2022.
+[60] J. Ho, W. Chan, C. Saharia, J. Whang, R. Gao, A. Gritsenko, D. P.
+Kingma, B. Poole, M. Norouzi, D. J. Fleet et al. , “Imagen video:
+High definition video generation with di ffusion models,” arXiv preprint
+arXiv:2210.02303, 2022.
+[61] X. Pan, P. Qin, Y . Li, H. Xue, and W. Chen, “Synthesizing coherent
+story with auto-regressive latent di ffusion models,” in Proceedings of
+the IEEE/CVF Winter Conference on Applications of Computer Vision ,
+2024, pp. 2920–2930.
+[62] L. Zhang, A. Rao, and M. Agrawala, “Adding conditional control
+to text-to-image di ffusion models,” in Proceedings of the IEEE /CVF
+International Conference on Computer Vision , 2023, pp. 3836–3847.
+[63] Y . Shi, C. Xue, J. H. Liew, J. Pan, H. Yan, W. Zhang, V . Y . Tan,
+and S. Bai, “Dragdi ffusion: Harnessing di ffusion models for interactive
+point-based image editing,” in Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition , 2024, pp. 8839–8849.
+[64] M. B. Bejiga, F. Melgani, and A. Vascotto, “Retro-remote sensing:
+Generating images from ancient texts,” IEEE Journal of Selected Topics
+in Applied Earth Observations and Remote Sensing , vol. 12, no. 3, pp.
+950–960, 2019.
+[65] M. B. Bejiga, G. Hoxha, and F. Melgani, “Retro-remote sensing with
+doc2vec encoding,” in 2020 Mediterranean and Middle-East Geoscience
+and Remote Sensing Symposium (M2GARSS) . IEEE, 2020, pp. 89–92.
+[66] ——, “Improving text encoding for retro-remote sensing,” IEEE Geo-
+science and Remote Sensing Letters , vol. 18, no. 4, pp. 622–626, 2021.
+[67] Q. Le and T. Mikolov, “Distributed representations of sentences and
+documents,” in International conference on machine learning . PMLR,
+2014, pp. 1188–1196.
+[68] R. Zhao and Z. Shi, “Text-to-remote-sensing-image generation with
+structured generative adversarial networks,” IEEE Geoscience and Re-
+mote Sensing Letters , vol. 19, pp. 1–5, 2021.
+[69] C. Chen, H. Ma, G. Yao, N. Lv, H. Yang, C. Li, and S. Wan, “Remote
+sensing image augmentation based on text description for waterside
+change detection,” Remote Sensing, vol. 13, no. 10, p. 1894, 2021.
+[70] H. Ramsauer, B. Sch ¨afl, J. Lehner, P. Seidl, M. Widrich, T. Adler,
+L. Gruber, M. Holzleitner, M. Pavlovi ´c, G. K. Sandve et al., “Hopfield
+networks is all you need,” arXiv preprint arXiv:2008.02217 , 2020.
+[71] A. Van Den Oord, O. Vinyals et al. , “Neural discrete representation
+learning,” Advances in neural information processing systems , vol. 30,
+2017.
+[72] S. Khanna, P. Liu, L. Zhou, C. Meng, R. Rombach, M. Burke, D. B.
+Lobell, and S. Ermon, “Di ffusionsat: A generative foundation model for
+satellite imagery,” in The Twelfth International Conference on Learning
+Representations, 2023.
+[73] D. Tang, X. Cao, X. Hou, Z. Jiang, J. Liu, and D. Meng, “Crs-di ff:
+Controllable remote sensing image generation with di ffusion model,”
+IEEE Transactions on Geoscience and Remote Sensing , vol. 62, pp. 1–
+14, 2024.
+[74] A. Sebaq and M. ElHelw, “Rsdi ff: Remote sensing image generation
+from text using di ffusion model,” Neural Computing and Applications ,
+pp. 1–9, 2024.
+[75] C. Saharia, W. Chan, S. Saxena, L. Li, J. Whang, E. L. Denton,
+K. Ghasemipour, R. Gontijo Lopes, B. Karagol Ayan, T. Salimans
+et al., “Photorealistic text-to-image diffusion models with deep language
+understanding,” Advances in neural information processing systems ,
+vol. 35, pp. 36 479–36 494, 2022.
+=====PAGE 19=====
+19
+[76] Y . Long, G.-S. Xia, S. Li, W. Yang, M. Y . Yang, X. X. Zhu, L. Zhang,
+and D. Li, “On creating benchmark dataset for aerial image interpre-
+tation: Reviews, guidances, and million-aid,” IEEE Journal of selected
+topics in applied earth observations and remote sensing , vol. 14, pp.
+4205–4230, 2021.
+[77] M. Mendieta, B. Han, X. Shi, Y . Zhu, and C. Chen, “Towards geospatial
+foundation models via continual pretraining,” in Proceedings of the
+IEEE/CVF International Conference on Computer Vision , 2023, pp.
+16 806–16 816.
+[78] Y . Wang, N. A. A. Braham, Z. Xiong, C. Liu, C. M. Albrecht, and X. X.
+Zhu, “Ssl4eo-s12: A large-scale multimodal, multitemporal dataset for
+self-supervised learning in earth observation [software and data sets],”
+IEEE Geoscience and Remote Sensing Magazine , vol. 11, no. 3, pp.
+98–106, 2023.
+[79] Z. Wang, R. Prabha, T. Huang, J. Wu, and R. Rajagopal, “Skyscript: A
+large and semantically diverse vision-language dataset for remote sens-
+ing,” in Proceedings of the AAAI Conference on Artificial Intelligence ,
+vol. 38, no. 6, 2024, pp. 5805–5813.
+[80] K. Li, G. Wan, G. Cheng, L. Meng, and J. Han, “Object detection in
+optical remote sensing images: A survey and a new benchmark,” ISPRS
+journal of photogrammetry and remote sensing , vol. 159, pp. 296–307,
+2020.
+[81] H. Li, X. Dou, C. Tao, Z. Hou, J. Chen, J. Peng, M. Deng, and L. Zhao,
+“Rsi-cb: A large scale remote sensing image classification benchmark
+via crowdsource data,” arXiv preprint arXiv:1705.10450 , 2017.
+[82] J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Aleman,
+D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat et al. , “Gpt-4
+technical report,” arXiv preprint arXiv:2303.08774 , 2023.
+[83] J. Ho and T. Salimans, “Classifier-free di ffusion guidance,” arXiv
+preprint arXiv:2207.12598, 2022.
+[84] C. Szegedy, V . Vanhoucke, S. Ioffe, J. Shlens, and Z. Wojna, “Rethinking
+the inception architecture for computer vision,” in Proceedings of the
+IEEE conference on computer vision and pattern recognition , 2016, pp.
+2818–2826.
+[85] S. Ruan, Y . Zhang, K. Zhang, Y . Fan, F. Tang, Q. Liu, and E. Chen,
+“Dae-gan: Dynamic aspect-aware gan for text-to-image synthesis,” in
+Proceedings of the IEEE /CVF international conference on computer
+vision, 2021, pp. 13 960–13 969.
+[86] E. J. Hu, Y . Shen, P. Wallis, Z. Allen-Zhu, Y . Li, S. Wang, L. Wang,
+and W. Chen, “Lora: Low-rank adaptation of large language models,”
+arXiv preprint arXiv:2106.09685 , 2021.
+[87] F. Liu, D. Chen, Z. Guan, X. Zhou, J. Zhu, Q. Ye, L. Fu, and J. Zhou,
+“Remoteclip: A vision language foundation model for remote sensing,”
+IEEE Transactions on Geoscience and Remote Sensing , 2024.

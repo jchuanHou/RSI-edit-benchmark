@@ -1,0 +1,85 @@
+{
+  "base": {
+    "repo_id": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+    "revision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+    "allow_patterns": [
+      "model_index.json",
+      "scheduler/*.json",
+      "tokenizer/*",
+      "text_encoder/config.json",
+      "text_encoder/model.fp16.safetensors",
+      "unet/config.json",
+      "unet/diffusion_pytorch_model.fp16.safetensors",
+      "vae/config.json",
+      "vae/diffusion_pytorch_model.fp16.safetensors",
+      "feature_extractor/*.json"
+    ],
+    "provenance": "Public mirror of runwayml/stable-diffusion-inpainting; 9-channel inpainting base, not ordinary SD1.5.",
+    "local_dir": "/data/workspace/PowerPaint_benchmark/models/base",
+    "files_sha256": {
+      "feature_extractor/preprocessor_config.json": "2a1da83b5e1032aaeef397552ddb408dca0d8cd1dc58f61bf6abf38d6f33a0a2",
+      "model_index.json": "636d700de8970a70f02b91d433ad949dc2ceb750f39ba0cf2cf39ef0b0b9d1e4",
+      "scheduler/scheduler_config.json": "8b457848b74deeeab2a967b75048dd2cb6f393cfc17751eca1b5ec655cff0183",
+      "text_encoder/config.json": "845df614cb9327ae7bbea027316246fae917827407da6df13572e41b5f93b4cc",
+      "text_encoder/model.fp16.safetensors": "77795e2023adcf39bc29a884661950380bd093cf0750a966d473d1718dc9ef4e",
+      "tokenizer/merges.txt": "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a",
+      "tokenizer/special_tokens_map.json": "c4864a9376a8401918425bed71fc14fc0e81f9b59ec45c1cf96cccb2df508eac",
+      "tokenizer/tokenizer_config.json": "00439066fcba73de57644cf41e4e3b9f2dbb09d7f3fc2005898ba52399045882",
+      "tokenizer/vocab.json": "e089ad92ba36837a0d31433e555c8f45fe601ab5c221d4f607ded32d9f7a4349",
+      "unet/config.json": "669f6581087fac5b16c44e42c58b359a35eadf2af5691d7945480bd7ceac8e6d",
+      "unet/diffusion_pytorch_model.fp16.safetensors": "24b788b4a777748377cc20364eea4ae113c8c42f4468c16bc8c02fdae5492af9",
+      "vae/config.json": "4cd0ce4803567837175fbb8412689fe77d069c1ef8171beb83979db309a8bad5",
+      "vae/diffusion_pytorch_model.fp16.safetensors": "4fbcf0ebe55a0984f5a5e00d8c4521d52359af7229bb4d81890039d2aa16dd7c"
+    }
+  },
+  "powerpaint": {
+    "repo_id": "JunhaoZhuang/PowerPaint-v1",
+    "revision": "b4174b7cade590ab185dbdcfa09eee2c0f63410b",
+    "allow_patterns": [
+      "unet/unet.safetensors",
+      "text_encoder/text_encoder.safetensors"
+    ],
+    "provenance": "Official original PowerPaint v1; not the BrushNet-based v2.",
+    "local_dir": "/data/workspace/PowerPaint_benchmark/models/powerpaint",
+    "files_sha256": {
+      "text_encoder/text_encoder.safetensors": "16410ea003cd5b3494c7e64b91b6669a40bad2b413e8255510dff8c3db5adfd7",
+      "unet/unet.safetensors": "f7e5f7955115d63c4f42541bcacb7e534cc476755de883aa9bb8a8415c4fc589"
+    }
+  },
+  "tokenizer": {
+    "repo_id": "stable-diffusion-v1-5/stable-diffusion-v1-5",
+    "revision": "451f4fe16113bff5a5d2269ed5ad43b0592e9a14",
+    "allow_patterns": [
+      "tokenizer/*"
+    ],
+    "provenance": "SD1.5 tokenizer, as in the official v1 loader.",
+    "local_dir": "/data/workspace/PowerPaint_benchmark/models/tokenizer",
+    "files_sha256": {
+      "tokenizer/merges.txt": "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a",
+      "tokenizer/special_tokens_map.json": "c4864a9376a8401918425bed71fc14fc0e81f9b59ec45c1cf96cccb2df508eac",
+      "tokenizer/tokenizer_config.json": "00439066fcba73de57644cf41e4e3b9f2dbb09d7f3fc2005898ba52399045882",
+      "tokenizer/vocab.json": "e089ad92ba36837a0d31433e555c8f45fe601ab5c221d4f607ded32d9f7a4349"
+    }
+  },
+  "clip": {
+    "repo_id": "openai/clip-vit-large-patch14",
+    "revision": "32bd64288804d66eefd0ccbe215aa642df71cc41",
+    "allow_patterns": [
+      "*.json",
+      "merges.txt",
+      "model.safetensors"
+    ],
+    "provenance": "OpenAI CLIP ViT-L/14 for evaluation, same revision as BrushNet benchmark.",
+    "local_dir": "/data/workspace/PowerPaint_benchmark/models/clip",
+    "files_sha256": {
+      "config.json": "8a09b467700c58138c29d53c605b34ebc69beaadd13274a8a2af8ad2c2f4032a",
+      "merges.txt": "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a",
+      "model.safetensors": "a2bf730a0c7debf160f7a6b50b3aaf3703e7e88ac73de7a314903141db026dcb",
+      "preprocessor_config.json": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd",
+      "special_tokens_map.json": "f8c0d6c39aee3f8431078ef6646567b0aba7f2246e9c54b8b99d55c22b707cbf",
+      "tokenizer.json": "a83e0809aa4c3af7208b2df632a7a69668c6d48775b3c3fe4e1b1199d1f8b8f4",
+      "tokenizer_config.json": "deef455e52fa5e8151e339add0582e4235f066009601360999d3a9cda83b1129",
+      "vocab.json": "3f0c4f7d2086b61b38487075278ea9ed04edb53a03cbb045b86c27190fa8fb69"
+    }
+  }
+}
