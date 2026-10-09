@@ -3,5 +3,6 @@ __pycache__/
 cache/
 models/base/
 models/clip/
+models/clip_b32/
 runs/
 logs/

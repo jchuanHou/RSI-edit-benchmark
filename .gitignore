@@ -39,6 +39,7 @@ dataset_manifest.json
 /PowerPaint_benchmark/models/tokenizer/
 /SD15_inpainting_benchmark/models/base/
 /SD15_inpainting_benchmark/models/clip/
+/SD15_inpainting_benchmark/models/clip_b32/
 /SD20_inpainting_benchmark/models/base/
 /SD20_inpainting_benchmark/models/clip/
 checkpoints/
